@@ -2,7 +2,7 @@
 using DotNetty.Buffers;
 using DotNetty.Codecs;
 using DotNetty.Transport.Channels;
-using NOnion.Helpers;
+using NOnion.Cells;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -24,7 +24,7 @@ namespace DotNetOnion.Codecs
 
             int length;
             // If command is fixed size the rest of the packet should be 509 bytes
-            if (!CommandsHelper.IsVariableLength(command))
+            if (!Command.IsVariableLength(command))
             {
                 length = Constants.FixedPayloadLength;
             }

@@ -2,7 +2,7 @@
 
 open System.IO
 
-open NOnion.Extensions
+open NOnion.Utility
 
 type Cert =
     {
@@ -17,8 +17,6 @@ type CellCerts =
 
     static member Deserialize (reader: BinaryReader) =
 
-        let certificatesCount = reader.ReadByte () |> int
-
         let rec readCertificates certificates n =
             if n = 0 then
                 certificates
@@ -27,14 +25,14 @@ type CellCerts =
                     {
                         Cert.Type = reader.ReadByte ()
                         Cert.Certificate =
-                            BinaryIOExtensions.BinaryReader.ReadBigEndianUInt16
-                                reader
+                            reader.ReadBigEndianUInt16 ()
                             |> int
                             |> reader.ReadBytes
                     }
 
                 readCertificates (certificates @ [ certificate ]) (n - 1)
 
+        let certificatesCount = reader.ReadByte () |> int
         let certs = readCertificates List.empty certificatesCount
 
         {
@@ -47,23 +45,19 @@ type CellCerts =
         member __.Command = 129uy
 
         member self.Serialize writer =
-            let rec writeCertificates (certificates: seq<Cert>) =
-                if Seq.isEmpty certificates then
-                    ()
-                else
-                    let certificate = Seq.head certificates
 
+            let rec writeCertificates (certificates: seq<Cert>) =
+                match Seq.tryHead certificates with
+                | None -> ()
+                | Some certificate ->
                     writer.Write certificate.Type
 
                     certificate.Certificate.Length
                     |> uint16
-                    |> BinaryIOExtensions.BinaryWriter.WriteUInt16BigEndian
-                        writer
+                    |> writer.WriteUInt16BigEndian
 
                     writer.Write certificate.Certificate
-
-                    writeCertificates (Seq.tail certificates)
+                    certificates |> Seq.tail |> writeCertificates
 
             self.Certs |> Seq.length |> uint8 |> writer.Write
-
             writeCertificates self.Certs

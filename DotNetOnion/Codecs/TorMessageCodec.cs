@@ -3,7 +3,6 @@ using DotNetOnion.Helpers;
 using DotNetty.Codecs;
 using DotNetty.Transport.Channels;
 using NOnion.Cells;
-using NOnion.Helpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,7 +17,7 @@ namespace DotNetOnion.Codecs
         {
             using MemoryStream payloadStream = new MemoryStream(msg.Payload);
             using BinaryReader payloadReader = new BinaryReader(payloadStream);
-            var cell = CommandsHelper.GetCell(msg.Command, payloadReader);
+            var cell = Command.DeserializeCell(payloadReader, msg.Command);
 
             output.Add(new TorMessage
             {
@@ -32,10 +31,10 @@ namespace DotNetOnion.Codecs
             //TODO: better initial size ?
             using MemoryStream payloadStream = new MemoryStream(Constants.FixedPayloadLength);
             using BinaryWriter payloadWriter = new BinaryWriter(payloadStream);
-            msg.Cell.Serialize(payloadWriter);
+            Command.SerializeCell(payloadWriter, msg.Cell);
 
             // Check if the cell is fixed size for padding
-            if (!CommandsHelper.IsVariableLength(msg.Cell.Command))
+            if (!Command.IsVariableLength(msg.Cell.Command))
             {
                 byte[] padding = new byte[Constants.FixedPayloadLength - payloadWriter.BaseStream.Position];
                 payloadWriter.Write(padding);

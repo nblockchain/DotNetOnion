@@ -7,8 +7,9 @@
 
   <ItemGroup>
     <Compile Include="Constants.fs" />
-    <Compile Include="Extensions\IntegerExtensions.fs" />
-    <Compile Include="Extensions\BinaryIOExtensions.fs" />
+    <Compile Include="Utility\IntegerExtensions.fs" />
+    <Compile Include="Utility\BinaryIOExtensions.fs" />
+    <Compile Include="Utility\Hex.fs" />
     <Compile Include="Cells\ICell.fs" />
     <Compile Include="Cells\CellCerts.fs" />
     <Compile Include="Cells\CellAuthChallenge.fs" />
@@ -16,8 +17,7 @@
     <Compile Include="Cells\CellNetInfo.fs" />
     <Compile Include="Cells\CellCreateFast.fs" />
     <Compile Include="Cells\CellCreatedFast.fs" />
-    <Compile Include="Helpers\CommandsHelper.fs" />
-    <Compile Include="Helpers\HexHelpers.fs" />
+    <Compile Include="Cells\Command.fs" />
   </ItemGroup>
 
 </Project>

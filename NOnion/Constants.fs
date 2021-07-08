@@ -1,6 +1,8 @@
 ﻿namespace NOnion
 
+[<RequireQualifiedAccess>]
 module Constants =
+
     [<Literal>]
     let ChallangeLength = 32
 

@@ -6,8 +6,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NOnion;
+using NOnion.Utility;
 using NOnion.Cells;
-using NOnion.Helpers;
 using NUnit.Framework;
 
 namespace DotNetOnion.Tests
@@ -33,23 +33,23 @@ namespace DotNetOnion.Tests
         {
             foreach (var testHexString in CellTestVectors)
             {
-                var testBytes = HexHelpers.HexToByteArray(testHexString);
+                var testBytes = Hex.ToByteArray(testHexString);
 
                 ICell cell;
                 using (MemoryStream payloadStream = new MemoryStream(testBytes))
                 using (BinaryReader payloadReader = new BinaryReader(payloadStream))
                 {
                     var command = payloadReader.ReadByte();
-                    cell = CommandsHelper.GetCell(command, payloadReader);
+                    cell = Command.DeserializeCell(payloadReader, command);
                 }
 
                 using (MemoryStream payloadStream = new MemoryStream())
                 using (BinaryWriter payloadWriter = new BinaryWriter(payloadStream))
                 {
                     payloadWriter.Write(cell.Command);
-                    cell.Serialize(payloadWriter);
+                    Command.SerializeCell(payloadWriter, cell);
 
-                    if (!CommandsHelper.IsVariableLength(cell.Command))
+                    if (!Command.IsVariableLength(cell.Command))
                     {
                         // +1 because in this test we are writing the command in the same stream
                         byte[] padding = new byte[Constants.FixedPayloadLength + 1 - payloadWriter.BaseStream.Position];
