@@ -19,11 +19,3 @@ jobs:
         run: dotnet build --configuration Release --no-restore
       - name: Test
         run: dotnet test --no-restore --verbosity normal
-
-      - name: fantomas
-        run: |
-          dotnet tool install --global fantomas-tool --version 4.4.0-alpha-008
-
-          # path taken from https://stackoverflow.com/a/65367006/544947
-          $HOME/.dotnet/tools/fantomas --recurse .
-          git diff --exit-code
