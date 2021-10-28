@@ -36,11 +36,6 @@ type TorWindow (start: int, increament: int) =
 
         lock windowLock safeIncrease
 
-    member private __.Foo_Bar () =
+    member private __.FooBar () =
         ()
 
-    member private __.foo_bar () =
-        ()
-
-    member private __.Baz () =
-        ()
