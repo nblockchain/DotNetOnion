@@ -35,3 +35,12 @@ type TorWindow (start: int, increament: int) =
             package <- package + increament
 
         lock windowLock safeIncrease
+
+    member private __.Foo_Bar () =
+        ()
+
+    member private __.foo_bar () =
+        ()
+
+    member private __.Baz () =
+        ()

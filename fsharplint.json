@@ -217,9 +217,8 @@
         }
     },
     "privateValuesNames": {
-        "enabled": false,
+        "enabled": true,
         "config": {
-            "naming": "CamelCase",
             "underscores": "None"
         }
     },
