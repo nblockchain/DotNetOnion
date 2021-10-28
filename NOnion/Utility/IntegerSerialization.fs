@@ -5,7 +5,7 @@ open System
 
 module IntegerSerialization =
 
-    let private someValue = 1
+    let private _someValue = 1
 
     let FromUInt16ToBigEndianByteArray (value: uint16) : array<byte> =
         let maybeLEbytes = BitConverter.GetBytes value
