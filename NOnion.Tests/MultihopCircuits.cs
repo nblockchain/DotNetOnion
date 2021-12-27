@@ -31,7 +31,7 @@ namespace NOnion.Tests
 
             TestContext.Progress.WriteLine($"Connecting to {((CircuitNodeDetail.Create)nodes[0]).EndPoint}...");
             using TorGuard guard = await TorGuard.NewClientAsync(((CircuitNodeDetail.Create)nodes[0]).EndPoint);
-            TorCircuit circuit = new TorCircuit(guard);
+            var circuit = new TorCircuit(guard);
 
             TestContext.Progress.WriteLine("Creating the circuit...");
             await circuit.CreateAsync(nodes[0]);
@@ -41,7 +41,7 @@ namespace NOnion.Tests
             await circuit.ExtendAsync(nodes[2]);
 
             TestContext.Progress.WriteLine("Creating the stream...");
-            TorStream stream = new TorStream(circuit);
+            var stream = new TorStream(circuit);
             await stream.ConnectToDirectoryAsync();
 
             TestContext.Progress.WriteLine("Sending http request over multihop circuit...");

@@ -33,7 +33,7 @@ namespace NOnion.Tests
         {
             var fallbackDirectory = FallbackDirectorySelector.GetRandomFallbackDirectory();
             using TorGuard guard = await TorGuard.NewClientAsync(fallbackDirectory);
-            TorCircuit circuit = new TorCircuit(guard);
+            var circuit = new TorCircuit(guard);
             var circuitId = await circuit.CreateAsync(CircuitNodeDetail.FastCreate);
             TestContext.Progress.WriteLine("Created circuit, Id: {0}", circuitId);
 
@@ -51,8 +51,8 @@ namespace NOnion.Tests
         {
             var fallbackDirectory = FallbackDirectorySelector.GetRandomFallbackDirectory();
             using TorGuard guard = await TorGuard.NewClientAsync(fallbackDirectory);
-            TorCircuit circuit = new TorCircuit(guard);
-            TorStream stream = new TorStream(circuit);
+            var circuit = new TorCircuit(guard);
+            var stream = new TorStream(circuit);
 
             await circuit.CreateAsync(CircuitNodeDetail.FastCreate);
             await stream.ConnectToDirectoryAsync();
@@ -69,8 +69,8 @@ namespace NOnion.Tests
         {
             var fallbackDirectory = FallbackDirectorySelector.GetRandomFallbackDirectory();
             using TorGuard guard = await TorGuard.NewClientAsync(fallbackDirectory);
-            TorCircuit circuit = new TorCircuit(guard);
-            TorStream stream = new TorStream(circuit);
+            var circuit = new TorCircuit(guard);
+            var stream = new TorStream(circuit);
 
             await circuit.CreateAsync(CircuitNodeDetail.FastCreate);
             await stream.ConnectToDirectoryAsync();
@@ -99,8 +99,8 @@ namespace NOnion.Tests
         {
             var node = (CircuitNodeDetail.Create)(await CircuitHelper.GetRandomRoutersForDirectoryBrowsingWithRetry()).First();
             using TorGuard guard = await TorGuard.NewClientAsync(node.EndPoint);
-            TorCircuit circuit = new TorCircuit(guard);
-            TorStream stream = new TorStream(circuit);
+            var circuit = new TorCircuit(guard);
+            var stream = new TorStream(circuit);
 
             await circuit.CreateAsync(node);
             await stream.ConnectToDirectoryAsync();

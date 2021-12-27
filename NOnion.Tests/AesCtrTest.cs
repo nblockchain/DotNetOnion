@@ -24,7 +24,7 @@ namespace NOnion.Tests
             byte[] iv =
                 Hex.ToByteArray("f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff");
 
-            TorStreamCipher cipher = new TorStreamCipher(key, iv);
+            var cipher = new TorStreamCipher(key, iv);
 
             byte[] plainText1 =
                 Hex.ToByteArray("6bc1bee22e409f96e93d7e117393172a");
@@ -71,7 +71,7 @@ namespace NOnion.Tests
             byte[] iv =
                 Hex.ToByteArray("f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff");
 
-            TorStreamCipher cipher = new TorStreamCipher(key, iv);
+            var cipher = new TorStreamCipher(key, iv);
 
             byte[] plainText1 =
                 Hex.ToByteArray("6bc1bee22e409f96e93d7e117393172a");

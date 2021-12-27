@@ -15,7 +15,7 @@ namespace NOnion.Tests
         [Test]
         public void CanCalculateRunningDigestOver4ByteArrays()
         {
-            TorMessageDigest digest = new TorMessageDigest();
+            var digest = new TorMessageDigest();
 
             byte[] plainText1 =
                 Hex.ToByteArray("6bc1bee22e409f96e93d7e117393172a");
@@ -57,7 +57,7 @@ namespace NOnion.Tests
         [Test]
         public void CanPeekDigestWithoutAffectingTheRunningDigest()
         {
-            TorMessageDigest digest = new TorMessageDigest();
+            var digest = new TorMessageDigest();
 
             byte[] plainText1 =
                 Hex.ToByteArray("6bc1bee22e409f96e93d7e117393172a");

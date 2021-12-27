@@ -37,7 +37,7 @@ namespace NOnion.Tests
         {
             var node = (CircuitNodeDetail.Create)(await CircuitHelper.GetRandomRoutersForDirectoryBrowsingWithRetry()).First();
             using TorGuard guard = await TorGuard.NewClientAsync(node.EndPoint);
-            TorCircuit circuit = new TorCircuit(guard);
+            var circuit = new TorCircuit(guard);
 
             await circuit.CreateAsync(CircuitNodeDetail.FastCreate);
             await circuit.RegisterAsIntroductionPointAsync(FSharpOption<AsymmetricCipherKeyPair>.None, StubCallback);
@@ -64,7 +64,7 @@ namespace NOnion.Tests
 
             var nodes = await CircuitHelper.GetRandomRoutersForDirectoryBrowsingWithRetry(2);
             using TorGuard guard = await TorGuard.NewClientAsync(((CircuitNodeDetail.Create)nodes[0]).EndPoint);
-            TorCircuit circuit = new TorCircuit(guard);
+            var circuit = new TorCircuit(guard);
 
             await circuit.CreateAsync(nodes[0]);
             await circuit.ExtendAsync(nodes[1]);
@@ -83,7 +83,7 @@ namespace NOnion.Tests
         {
             TorDirectory directory = await TorDirectory.BootstrapAsync(FallbackDirectorySelector.GetRandomFallbackDirectory());
 
-            TorServiceHost host = new TorServiceHost(directory, TestsRetryCount);
+            var host = new TorServiceHost(directory, TestsRetryCount);
             await host.StartAsync();
 
             var serverSide =
@@ -98,7 +98,7 @@ namespace NOnion.Tests
                     var client = await TorServiceClient.ConnectAsync(directory, host.Export());
                     var stream = client.GetStream();
                     FSharpOption<byte[]> data;
-                    using MemoryStream memStream = new MemoryStream();
+                    using var memStream = new MemoryStream();
                     while (!FSharpOption<byte[]>.get_IsNone(data = await stream.ReceiveAsync()))
                         memStream.Write(data.Value, 0, data.Value.Length);
 
