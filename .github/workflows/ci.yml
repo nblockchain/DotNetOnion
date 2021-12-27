@@ -5,8 +5,6 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-20.04
-    env:
-      BASE_VERSION: "0.1.0"
     steps:
       - uses: actions/checkout@v2
         with:
@@ -22,6 +20,21 @@ jobs:
       - name: Test
         run: dotnet test --no-restore --verbosity normal
 
+  sanitycheck:
+    needs: build
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Setup .NET Core SDK 5.0.x
+        uses: actions/setup-dotnet@v1.7.2
+        with:
+          dotnet-version: '5.0.x'
+      - name: Install dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
       - name: fsharpLint
         run: |
           dotnet tool install --global dotnet-fsharplint --version 0.20.0
@@ -38,6 +51,24 @@ jobs:
           # path taken from https://stackoverflow.com/a/65367006/544947
           $HOME/.dotnet/tools/fantomless --recurse .
           git diff --exit-code
+
+  package:
+    needs: sanitycheck
+    runs-on: ubuntu-20.04
+    env:
+      BASE_VERSION: "0.1.0"
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Setup .NET Core SDK 3.1.x
+        uses: actions/setup-dotnet@v1.7.2
+        with:
+          dotnet-version: '3.1.x'
+      - name: Install dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
       - name: Package
         run: |
           git clone https://github.com/nblockchain/fsx
@@ -45,3 +76,4 @@ jobs:
           sudo ./scripts/CI/install_mono_from_microsoft_deb_packages.sh
           cd ../NOnion
           ../fsx/Tools/nugetPush.fsx $BASE_VERSION ${{secrets.NUGET_API_KEY}}
+
