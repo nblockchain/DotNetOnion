@@ -45,7 +45,7 @@ type TorStream(circuit: TorCircuit) =
 
     member __.End() =
         async {
-            let safeSend() =
+            let safeEnd() =
                 async {
                     match streamState with
                     | Connected streamId ->
@@ -62,10 +62,10 @@ type TorStream(circuit: TorCircuit) =
                         |> TorLogger.Log
                     | _ ->
                         failwith
-                            "Unexpected state when trying to send data over stream"
+                            "Unexpected state when trying to end the stream"
                 }
 
-            return! controlLock.RunAsyncWithSemaphore safeSend
+            return! controlLock.RunAsyncWithSemaphore safeEnd
         }
 
     member self.EndAsync() =
