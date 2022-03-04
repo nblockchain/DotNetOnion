@@ -61,7 +61,7 @@ type TorStreamCipher(keyBytes: array<byte>, ivOpt: Option<array<byte>>) =
                                             + carry
 
                                         let carry: int =
-                                            if x > 0xff then
+                                            if increamentedByte > 0xff then
                                                 1
                                             else
                                                 0
