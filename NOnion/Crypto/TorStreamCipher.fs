@@ -52,12 +52,13 @@ type TorStreamCipher(keyBytes: array<byte>, ivOpt: Option<array<byte>>) =
                                     BlockSize
 
                             let increamentCounter() : unit =
-                                let rec innerIncreament i (carry: int) =
-                                    if i < 0 then
+                                let rec innerIncreament pos (carry: int) =
+                                    if pos < 0 then
                                         ()
                                     else
-                                        let x =
-                                            (int(counter.[i]) &&& 0xff) + carry
+                                        let increamentedByte =
+                                            (int(counter.[pos]) &&& 0xff)
+                                            + carry
 
                                         let carry: int =
                                             if x > 0xff then
@@ -65,8 +66,8 @@ type TorStreamCipher(keyBytes: array<byte>, ivOpt: Option<array<byte>>) =
                                             else
                                                 0
 
-                                        counter.[i] <- byte x
-                                        innerIncreament(i - 1) carry
+                                        counter.[pos] <- byte increamentedByte
+                                        innerIncreament(pos - 1) carry
 
                                 innerIncreament(counter.Length - 1) 1
 
