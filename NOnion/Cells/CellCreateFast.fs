@@ -10,10 +10,8 @@ type CellCreateFast =
     }
 
     static member Deserialize(reader: BinaryReader) =
-        let x = reader.ReadBytes Constants.HashLength
-
         {
-            X = x
+            X = reader.ReadBytes Constants.HashLength
         }
         :> ICell
 
