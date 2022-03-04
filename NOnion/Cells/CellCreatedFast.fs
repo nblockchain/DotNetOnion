@@ -12,12 +12,9 @@ type CellCreatedFast =
         }
 
     static member Deserialize(reader: BinaryReader) =
-        let y = reader.ReadBytes Constants.HashLength
-        let derivativeKeyData = reader.ReadBytes Constants.HashLength
-
         {
-            Y = y
-            DerivativeKeyData = derivativeKeyData
+            Y = reader.ReadBytes Constants.HashLength
+            DerivativeKeyData = reader.ReadBytes Constants.HashLength
         }
         :> ICell
 
