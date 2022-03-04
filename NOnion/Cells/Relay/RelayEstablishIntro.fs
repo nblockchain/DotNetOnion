@@ -20,13 +20,17 @@ type RelayIntroAuthKey =
 
         match authKeyType with
         | 0uy
-        | 1uy -> failwith "NIE"
+        | 1uy ->
+            failwith
+                "deserializtion failed, legacy auth keys are not implemented"
         | 2uy -> ED25519SHA3256 data
         | _ -> failwith "Unknown authentication key"
 
     member self.ToBytes() =
         match self with
-        | Legacy -> failwith "NIE"
+        | Legacy ->
+            failwith
+                "serialization failed, legacy auth keys are not implemented"
         | ED25519SHA3256 data ->
             Array.concat
                 [
@@ -39,12 +43,16 @@ type RelayIntroAuthKey =
 
     member self.MacLength =
         match self with
-        | Legacy -> failwith "NIE"
+        | Legacy ->
+            failwith
+                "unknown digest length, legacy auth keys are not implemented"
         | ED25519SHA3256 _ -> 32
 
     member self.SignatureLength =
         match self with
-        | Legacy -> failwith "NIE"
+        | Legacy ->
+            failwith
+                "unknown signature length, legacy auth keys are not implemented"
         | ED25519SHA3256 _ -> 64
 
 type RelayIntroExtension =
@@ -139,7 +147,12 @@ type RelayEstablishIntro =
             if sigLength = authKey.SignatureLength then
                 sigLength |> reader.ReadBytes
             else
-                failwith "Invalid signature"
+                failwith(
+                    sprintf
+                        "EstablishIntro deserialization failed, invalid signature size (expected %d, got %d)"
+                        authKey.SignatureLength
+                        sigLength
+                )
 
         {
             AuthKey = authKey
@@ -151,10 +164,20 @@ type RelayEstablishIntro =
     member self.ToBytes (serializeMac: bool) (serializeSignature: bool) =
         if serializeSignature
            && self.AuthKey.SignatureLength <> self.Signature.Length then
-            failwith "Wrong signature size"
+            failwith(
+                sprintf
+                    "EstablishIntro serialization failed, signature should be %d bytes (was %d)"
+                    self.AuthKey.SignatureLength
+                    self.Signature.Length
+            )
 
         if serializeMac && self.AuthKey.MacLength <> self.HandshakeAuth.Length then
-            failwith "Wrong digest size"
+            failwith(
+                sprintf
+                    "EstablishIntro serialization failed, digest should be %d bytes (was %d)"
+                    self.AuthKey.MacLength
+                    self.HandshakeAuth.Length
+            )
 
         let digestAndSignature =
             match serializeMac, serializeSignature with
