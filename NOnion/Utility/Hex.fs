@@ -18,10 +18,10 @@ module Hex =
 
         // blit bytes to array
         let bytes = Array.create(hex.Length / 2) 0uy
-        let mutable i = 0
+        let mutable bytePos = 0
 
-        while i < bytes.Length do
-            bytes.[i] <- Convert.ToByte(hex.Substring(i * 2, 2), 16)
-            i <- i + 1
+        while bytePos < bytes.Length do
+            bytes.[bytePos] <- Convert.ToByte(hex.Substring(bytePos * 2, 2), 16)
+            bytePos <- bytePos + 1
 
         bytes
