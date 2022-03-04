@@ -1,19 +1,18 @@
 ﻿namespace NOnion.Network
 
-type TorWindow(start: int, increament: int) =
+type TorWindow(start: int, increment: int) =
 
     let mutable package = start
     let mutable delivery = start
-    let increament = increament
     let start = start
     let windowLock = obj()
 
     member __.NeedSendme() =
         let safeCheck() =
-            if delivery > (start - increament) then
+            if delivery > (start - increment) then
                 false
             else
-                delivery <- delivery + increament
+                delivery <- delivery + increment
                 true
 
         lock windowLock safeCheck
@@ -32,6 +31,6 @@ type TorWindow(start: int, increament: int) =
 
     member __.PackageIncrease() =
         let safeIncrease() =
-            package <- package + increament
+            package <- package + increment
 
         lock windowLock safeIncrease
