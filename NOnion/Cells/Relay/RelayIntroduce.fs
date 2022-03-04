@@ -20,14 +20,14 @@ type RelayIntroduceInnerData =
         let extensions =
             let extensionCount = reader.ReadByte()
 
-            let rec readExtensionsList state n =
-                if n = 0uy then
+            let rec readExtensionsList state remainingCount =
+                if remainingCount = 0uy then
                     state
                 else
                     readExtensionsList
                         (state
                          @ List.singleton(RelayIntroExtension.FromBytes reader))
-                        (n - 1uy)
+                        (remainingCount - 1uy)
 
             readExtensionsList List.empty extensionCount
 
@@ -100,14 +100,14 @@ type RelayIntroduce =
         let extensions =
             let extensionCount = reader.ReadByte()
 
-            let rec readExtensionsList state n =
-                if n = 0uy then
+            let rec readExtensionsList state remainingCount =
+                if remainingCount = 0uy then
                     state
                 else
                     readExtensionsList
                         (state
                          @ List.singleton(RelayIntroExtension.FromBytes reader))
-                        (n - 1uy)
+                        (remainingCount - 1uy)
 
             readExtensionsList List.empty extensionCount
 
