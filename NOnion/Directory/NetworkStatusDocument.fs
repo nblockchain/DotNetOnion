@@ -48,7 +48,7 @@ type DirectorySourceEntry =
 
                 match words.Dequeue() with
                 | "dir-source" when state.NickName = None ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
@@ -61,14 +61,14 @@ type DirectorySourceEntry =
                         }
                 | "dir-source" when state.NickName <> None -> state
                 | "contact" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
                             Contact = readRestAsString() |> Some
                         }
                 | "vote-digest" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
@@ -136,7 +136,7 @@ type RouterStatusEntry =
 
                 match words.Dequeue() with
                 | "r" when state.NickName = None ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
@@ -150,14 +150,14 @@ type RouterStatusEntry =
                         }
                 | "r" when state.NickName <> None -> state
                 | "a" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
                             Address = readRestAsString() |> Some
                         }
                 | "s" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
@@ -169,28 +169,28 @@ type RouterStatusEntry =
                                     )
                         }
                 | "v" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
                             Version = readRestAsString() |> Some
                         }
                 | "pr" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
                             Protocols = readRestAsString() |> Some
                         }
                 | "w" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
                             Bandwidth = readRestAsString() |> Some
                         }
                 | "p" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
@@ -241,7 +241,7 @@ type DirectorySignature =
 
                 match words.Dequeue() with
                 | "directory-signature" when state.Identity = None ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
@@ -327,98 +327,98 @@ type NetworkStatusDocument =
             let newState: NetworkStatusDocument =
                 match words.Dequeue() with
                 | "network-status-version" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         Version = readInt() |> Some
                     }
                 | "vote-status" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         VoteStatus = readRestAsString() |> Some
                     }
                 | "consensus-method" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         ConsensusMethod = readInt() |> Some
                     }
                 | "valid-after" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         ValidAfter = readDateTime() |> Some
                     }
                 | "fresh-until" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         FreshUntil = readDateTime() |> Some
                     }
                 | "valid-until" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         ValidUntil = readDateTime() |> Some
                     }
                 | "voting-delay" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         VotingDelay = readRestAsString() |> Some
                     }
                 | "client-versions" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         ClientVersions = readRestAsString() |> Some
                     }
                 | "server-versions" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         ServerVersions = readRestAsString() |> Some
                     }
                 | "package" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         Packages =
                             state.Packages @ List.singleton(readRestAsString())
                     }
                 | "known-flags" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         KnownFlags = readRestAsString() |> Some
                     }
                 | "recommended-client-protocols" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         RecommendedClientProtocols = readRestAsString() |> Some
                     }
                 | "recommended-relay-protocols" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         RecommendedRelayProtocols = readRestAsString() |> Some
                     }
                 | "required-client-protocols" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         RequiredClientProtocols = readRestAsString() |> Some
                     }
                 | "required-relay-protocols" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         RequiredRelayProtocols = readRestAsString() |> Some
                     }
                 | "params" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         Params =
@@ -430,19 +430,19 @@ type NetworkStatusDocument =
                             |> Map.ofSeq
                     }
                 | "shared-rand-previous-value" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         SharedRandomPreviousValue = readRestAsString() |> Some
                     }
                 | "shared-rand-current-value" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         SharedRandomCurrentValue = readRestAsString() |> Some
                     }
                 | "bandwidth-weights" ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
 
                     { state with
                         BandwithWeights = readRestAsString() |> Some
@@ -466,7 +466,7 @@ type NetworkStatusDocument =
                             @ List.singleton(DirectorySignature.Parse lines)
                     }
                 | _ ->
-                    lines.Dequeue() |> ignore
+                    lines.Dequeue() |> ignore<string>
                     state
 
             if lines.Count > 0 then
