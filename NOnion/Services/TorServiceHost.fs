@@ -121,7 +121,7 @@ type TorServiceHost
                         with
                     | false, _ -> failwith "Unknown introduction point"
                     | true, details -> details
-                | _ -> failwith "Unknown introduction point"
+                | _ -> failwith "Unreachable, legacy keys are not implemented"
 
             let introAuthPubKey =
                 introductionPointDetails.AuthKey.Public
@@ -213,7 +213,10 @@ type TorServiceHost
                 let! _, introNodeDetail = directory.GetRouter RouterType.Normal
 
                 match introNodeDetail with
-                | FastCreate -> return failwith "should not happen"
+                | FastCreate ->
+                    return
+                        failwith
+                            "Unreachable, directory always returns non-fast connection info"
                 | Create(address, onionKey, fingerprint) ->
 
                     let! guard = TorGuard.NewClient guardEndPoint
