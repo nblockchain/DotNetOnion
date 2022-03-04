@@ -80,7 +80,9 @@ type TorCircuit
             match lastNodeOpt with
             | None -> failwith "BUG: circuit has no nodes"
             | Some lastNode -> lastNode
-        | _ -> failwith ""
+        | _ ->
+            failwith
+                "Unexpected state when trying to find the last circuit node"
 
     member private self.UnsafeSendRelayCell
         (streamId: uint16)
@@ -104,7 +106,8 @@ type TorCircuit
                             reversedNodesList |> Seq.tryHead
 
                         match destinationNodeOpt with
-                        | None -> failwith "BUG: circuit has no nodes"
+                        | None ->
+                            failwith "Circuit has no nodes, can't relay data"
                         | Some destinationNode ->
                             reversedNodesList, destinationNode
                     | Some destination ->
@@ -528,7 +531,7 @@ type TorCircuit
                 | _ ->
                     return
                         failwith
-                            "Unexpected state for registering as introduction point"
+                            "Unexpected state for registering as rendezvous point"
             }
 
         async {
@@ -611,7 +614,8 @@ type TorCircuit
                     return connectionCompletionSource.Task
                 | _ ->
                     return
-                        failwith "Unexpected state when sending introduce msg"
+                        failwith
+                            "Unexpected state when waiting for rendezvous join"
             }
 
         async {
@@ -695,7 +699,7 @@ type TorCircuit
 
                 | _ ->
                     return
-                        failwith "Unexpected state when sending introduce msg"
+                        failwith "Unexpected state when sending rendezvous msg"
             }
 
         async { do! controlLock.RunAsyncWithSemaphore sendRendezvousCell }
@@ -918,7 +922,7 @@ type TorCircuit
                                 tcs.SetResult(ackMsg)
                             | _ ->
                                 failwith
-                                    "Unexpected circuit state when receiving RENDEZVOUS_ESTABLISHED cell"
+                                    "Unexpected circuit state when receiving RelayIntroduceAck cell"
 
                         controlLock.RunSyncWithSemaphore handleIntroduceAck
                     | RelayData.RelayRendezvous2 rendMsg ->
@@ -974,7 +978,7 @@ type TorCircuit
                                 tcs.SetResult()
                             | _ ->
                                 failwith
-                                    "Unexpected circuit state when receiving RENDEZVOUS_ESTABLISHED cell"
+                                    "Unexpected circuit state when receiving Rendevzous2 cell"
 
                         controlLock.RunSyncWithSemaphore handleRendezvous
                     | RelayBegin beginRequest ->
