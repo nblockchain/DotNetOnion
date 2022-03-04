@@ -19,8 +19,8 @@ type CellCerts =
 
     static member Deserialize(reader: BinaryReader) =
 
-        let rec readCertificates certificates n =
-            if n = 0 then
+        let rec readCertificates certificates remainingCount =
+            if remainingCount = 0 then
                 certificates
             else
                 let certificate =
@@ -32,7 +32,9 @@ type CellCerts =
                             |> reader.ReadBytes
                     }
 
-                readCertificates(certificates @ [ certificate ]) (n - 1)
+                readCertificates
+                    (certificates @ [ certificate ])
+                    (remainingCount - 1)
 
         let certificatesCount = reader.ReadByte() |> int
         let certs = readCertificates List.empty certificatesCount
