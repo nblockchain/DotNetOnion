@@ -15,11 +15,13 @@ type CellAuthChallenge =
 
     static member Deserialize(reader: BinaryReader) =
 
-        let rec readMethod methods n =
-            if n = 0 then
+        let rec readMethod methods remainingCount =
+            if remainingCount = 0 then
                 methods
             else
-                readMethod(methods @ [ ReadBigEndianUInt16 reader ]) (n - 1)
+                readMethod
+                    (methods @ [ ReadBigEndianUInt16 reader ])
+                    (remainingCount - 1)
 
         let challenge = reader.ReadBytes Constants.ChallangeLength
         let methodsCount = ReadBigEndianUInt16 reader |> int
