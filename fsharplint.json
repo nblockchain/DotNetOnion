@@ -409,13 +409,17 @@
             "(Array.take x y, Array.skip x y) ===> Array.splitAt x y",
             "(Seq.take x y, Seq.skip x y) ===> Seq.splitAt x y",
 
-            "List.empty ===> []",
-            "Array.empty ===> [||]",
+            "[] ===> List.Empty",
+            "List.empty ===> List.Empty",
+            "[||] ===> Array.empty",
+            "\"\" ===> String.Empty",
 
-            "x::[] ===> [x]",
+            "[x] ===> x::List.Empty",
             "pattern: [x] ===> x::[]",
 
             "x @ [] ===> x",
+            "x @ List.Empty ===> x",
+            "x @ List.empty ===> x",
 
             "List.isEmpty [] ===> true",
             "Array.isEmpty [||] ===> true",
