@@ -960,8 +960,6 @@ type TorCircuit
                                 circuitState <-
                                     Ready(
                                         circuitId,
-                                        nodes
-                                        @ List.singleton
                                             {
                                                 TorCircuitNode.CryptoState =
                                                     TorCryptoState.FromKdfResult
@@ -971,7 +969,7 @@ type TorCircuit
                                                 Window =
                                                     TorWindow
                                                         Constants.DefaultCircuitLevelWindowParams
-                                            }
+                                            } :: nodes
                                     )
 
                                 tcs.SetResult()
