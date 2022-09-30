@@ -246,8 +246,7 @@ type HiddenServiceDescriptorDocument =
                 | "introduction-point" ->
                     { state with
                         IntroductionPoints =
-                            state.IntroductionPoints
-                            @ List.singleton(IntroductionPointEntry.Parse lines)
+                            (IntroductionPointEntry.Parse lines) :: state.IntroductionPoints
                     }
                 | _ ->
                     lines.Dequeue() |> ignore<string>
