@@ -32,13 +32,13 @@ type CellNetInfo =
                 addresses
             else
                 readAddresses
-                    (addresses @ [ readAddress() ])
+                    (readAddress() :: addresses)
                     (remainingCount - 1uy)
 
         let time = ReadBigEndianUInt32 reader
         let otherAddress = readAddress()
         let myAddressesCount = reader.ReadByte()
-        let myAddresses = readAddresses List.Empty myAddressesCount
+        let myAddresses = readAddresses List.Empty myAddressesCount |> Seq.rev
 
         {
             Time = time
