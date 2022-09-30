@@ -96,7 +96,7 @@ module Base32Util =
             | x0 :: [] -> result @ quintupletToList 1 (x0, 0uy, 0uy, 0uy, 0uy)
             | [] -> result
 
-        data |> Array.toList |> parse [] |> List.toArray |> System.String.Concat
+        data |> Array.toList |> parse List.Empty |> List.toArray |> System.String.Concat
 
     /// Decodes a Base32 string to a UTF8 string
     let DecodeBase32 text =
@@ -163,4 +163,4 @@ module Base32Util =
                         tail
                 | _ -> result
 
-            [ for c in text -> c ] |> parse [] |> List.toArray
+            [ for c in text -> c ] |> parse List.Empty |> List.toArray
