@@ -136,7 +136,7 @@ type RelayEstablishIntro =
                         ((RelayIntroExtension.FromBytes reader) :: state)
                         (remainingCount - 1uy)
 
-            readExtensionsList List.empty extensionCount
+            readExtensionsList List.empty extensionCount |> Seq.rev
 
         let handshakeAuth = reader.ReadBytes authKey.MacLength
 
