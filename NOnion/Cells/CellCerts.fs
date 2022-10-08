@@ -33,11 +33,11 @@ type CellCerts =
                     }
 
                 readCertificates
-                    (certificates @ [ certificate ])
+                    (certificate :: certificates)
                     (remainingCount - 1)
 
         let certificatesCount = reader.ReadByte() |> int
-        let certs = readCertificates List.empty certificatesCount
+        let certs = readCertificates List.empty certificatesCount |> Seq.rev
 
         {
             Certs = certs

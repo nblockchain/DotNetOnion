@@ -22,9 +22,9 @@ type CellVersions =
             if reader.BaseStream.Length = reader.BaseStream.Position then
                 versions
             else
-                readVersions(versions @ [ ReadBigEndianUInt16 reader ])
+                readVersions((ReadBigEndianUInt16 reader) :: versions)
 
-        let versions = readVersions List.empty
+        let versions = readVersions List.empty |> Seq.rev
 
         {
             Versions = versions
