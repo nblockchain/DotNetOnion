@@ -18,6 +18,7 @@
     <Compile Include="RelayIntroduceStatus.fs" />
     <Compile Include="Exceptions.fs" />
     <Compile Include="HandshakeType.fs" />
+    <Compile Include="Utility\ByteArrayUtil.fs" />
     <Compile Include="Utility\FSharpUtil.fs" />
     <Compile Include="Utility\ResultUtil.fs" />
     <Compile Include="Utility\MailboxUtil.fs" />
