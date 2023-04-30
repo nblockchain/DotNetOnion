@@ -24,7 +24,7 @@ type HiddenServiceSecondLayerDescriptorDocument =
         let lines = stringToParse.Split '\n' |> MutableQueue<string>
 
         let rec readBlock(state: string) =
-            let line = lines.Dequeue()
+            let line = sprintf "%s\n" (lines.Dequeue())
 
             if line.StartsWith "-----END" then
                 state + line
@@ -40,17 +40,10 @@ type HiddenServiceSecondLayerDescriptorDocument =
                 | "encrypted" ->
                     lines.Dequeue() |> ignore<string>
 
-                    let payloadString = readBlock String.Empty
-
                     { state with
                         HiddenServiceSecondLayerDescriptorDocument.EncryptedPayload =
-                            payloadString
-                                .Replace(
-                                    "-----BEGIN MESSAGE-----",
-                                    String.Empty
-                                )
-                                .Replace("-----END MESSAGE-----", String.Empty)
-                            |> Convert.FromBase64String
+                            readBlock String.Empty
+                            |> PemUtility.PemToByteArray
                             |> Some
                     }
                 | _ ->

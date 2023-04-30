@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Net
 open System.Text
+open System.Text.RegularExpressions
 
 open Newtonsoft.Json
 
@@ -12,6 +13,7 @@ open NOnion.Crypto
 open NOnion.Network
 open NOnion.Http
 open NOnion.Utility
+open NOnion.Utility.FSharpUtil
 
 type RouterType =
     | Normal
@@ -43,6 +45,128 @@ type TorDirectory =
         | None ->
             failwith
                 "TorDirectory::GetRandomDirectorySource: couldn't find suitable directory source."
+
+    static member private GetTrustedAuthorities() =
+        let authDirText =
+            EmbeddedResourceUtility
+                .ExtractEmbeddedResourceFileContents("auth_dirs.inc")
+                .Replace("\r\n", "\n")
+
+        let regexPattern = "\"(\w+) orport=\d+ \"\n  \"v3ident=(\w+) \""
+        let regex = Regex(regexPattern, RegexOptions.Multiline)
+
+        regex.Matches authDirText
+        |> Seq.cast
+        |> Seq.map(fun (authDirMatch: Match) ->
+            (authDirMatch.Groups.[1].Value, authDirMatch.Groups.[2].Value)
+        )
+        |> Seq.toList
+
+    static member private ValidateConsensus
+        (circuit: TorCircuit)
+        (networkStatus: NetworkStatusDocument)
+        =
+        async {
+            let trustedAuthDirs = TorDirectory.GetTrustedAuthorities()
+
+            let trustedAuthDirsCount = trustedAuthDirs |> Seq.length
+
+            let trustedSigners =
+                networkStatus.Signatures
+                |> List.choose(fun signatureObj ->
+                    match
+                        (signatureObj.Identity,
+                         signatureObj.SigningKeyDigest,
+                         signatureObj.Signature,
+                         signatureObj.Algorithm)
+                        with
+                    | Some identity,
+                      Some signingKeyDigest,
+                      Some signature,
+                      Some alg ->
+                        if trustedAuthDirs
+                           |> Seq.exists(fun (_dirName, dirIdentity) ->
+                               dirIdentity = identity
+                           ) then
+                            Some(identity, signingKeyDigest, signature, alg)
+                        else
+                            None
+                    | _ -> None
+                )
+
+            let keysToDownload =
+                trustedSigners
+                |> Seq.map(fun (identity, signingKeyDigest, _signature, _alg) ->
+                    sprintf "%s-%s" identity signingKeyDigest
+                )
+
+            let keyRetrievalStream = TorStream circuit
+            do! keyRetrievalStream.ConnectToDirectory() |> Async.Ignore
+
+            let httpClient =
+                TorHttpClient(keyRetrievalStream, Constants.DefaultHttpHost)
+
+            let! downloadedKeys =
+                httpClient.GetAsString
+                    (sprintf
+                        "/tor/keys/fp-sk/%s"
+                        (String.Join("+", keysToDownload)))
+                    false
+
+            let validatedKeyCerts = KeyCertificateEntry.ParseMany downloadedKeys
+
+            let rec validateSignature trustedSigners state =
+                match trustedSigners with
+                | (identity, _signingKeyDigest, signature, alg) :: tail ->
+                    let keyCertOpt =
+                        validatedKeyCerts
+                        |> List.tryFind(fun keyCert ->
+                            keyCert.Fingerprint = Some identity
+                        )
+
+                    match keyCertOpt with
+                    | Some keyCert ->
+                        let signingKey =
+                            UnwrapOption
+                                keyCert.SigningKey
+                                "ValidateConsensus: key cert's signing key is none (should not happen)"
+                            |> PemUtility.GetRsaKeyParametersFromPem
+
+                        let digest =
+                            match alg with
+                            | "sha1" ->
+                                UnwrapOption
+                                    networkStatus.SHA1Digest
+                                    "ValidateConsensus: consensus sha1 digest is none (should not happen)"
+                            | "sha256" ->
+                                UnwrapOption
+                                    networkStatus.SHA256Digest
+                                    "ValidateConsensus: consensus sha256 digest is none (should not happen)"
+                            | _ ->
+                                failwith
+                                    "Unreachable: unidentified directory signature algorithm"
+
+
+                        let decryptedConsensusDigest =
+                            signature
+                            |> PemUtility.PemToByteArray
+                            |> DirectoryCipher.DecryptSignature signingKey
+
+                        if decryptedConsensusDigest <> digest then
+                            validateSignature tail state
+                        else
+                            validateSignature tail (state + 1)
+                    | None -> validateSignature tail state
+                | [] -> state
+
+            if validateSignature trustedSigners 0 < trustedAuthDirsCount / 2 then
+                return
+                    raise
+                    <| NOnionException
+                        "Untrusted consensus was downloaded, please try again."
+
+            return ()
+        }
 
     member self.GetMicroDescriptorByIdentity
         (identity: string)
@@ -239,7 +363,11 @@ type TorDirectory =
                         "/tor/status-vote/current/consensus-microdesc"
                         false
 
-                self.NetworkStatus <- NetworkStatusDocument.Parse response
+                let networkStatus = NetworkStatusDocument.Parse response
+
+                do! TorDirectory.ValidateConsensus circuit networkStatus
+
+                self.NetworkStatus <- networkStatus
         }
 
     static member BootstrapWithGuard
@@ -270,12 +398,17 @@ type TorDirectory =
                                 "/tor/status-vote/current/consensus-microdesc"
                                 false
 
+                        let networkStatus =
+                            NetworkStatusDocument.Parse consensusStr
+
+                        do! TorDirectory.ValidateConsensus circuit networkStatus
+
                         match consensusPathOpt with
                         | Some consensusPath ->
                             File.WriteAllText(consensusPath, consensusStr)
                         | None -> ()
 
-                        return NetworkStatusDocument.Parse consensusStr
+                        return networkStatus
                     }
 
                 async {

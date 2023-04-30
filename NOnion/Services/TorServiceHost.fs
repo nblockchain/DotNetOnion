@@ -9,12 +9,11 @@ open System.Text
 open System.Threading
 open FSharpx.Collections
 
-open Chaos.NaCl
 open Org.BouncyCastle.Crypto
 open Org.BouncyCastle.Crypto.Parameters
 open Org.BouncyCastle.Crypto.Generators
-open Org.BouncyCastle.Crypto.Signers
 open Org.BouncyCastle.Security
+open Org.BouncyCastle.Math.EC.Rfc8032
 
 open NOnion
 open NOnion.Cells.Relay
@@ -128,7 +127,10 @@ type TorServiceHost
                 let! endPoint, randomNodeDetails =
                     directory.GetRouter RouterType.Guard
 
-                let! guard = TorGuard.NewClient endPoint
+                let! guard =
+                    TorGuard.NewClientWithIdentity
+                        endPoint
+                        (randomNodeDetails.GetIdentityKey() |> Some)
 
                 let rendezvousCircuit =
                     TorCircuit(guard, self.IncomingServiceStreamCallback)
@@ -273,7 +275,11 @@ type TorServiceHost
                                 failwith
                                     "Unreachable, directory always returns non-fast connection info"
                         | Create(address, onionKey, fingerprint) ->
-                            let! guard = TorGuard.NewClient guardEndPoint
+                            let! guard =
+                                TorGuard.NewClientWithIdentity
+                                    guardEndPoint
+                                    (guardNodeDetail.GetIdentityKey() |> Some)
+
                             let circuit = TorCircuit guard
 
                             let encKeyPair, authKeyPair =
@@ -378,7 +384,11 @@ type TorServiceHost
                     let! _, randomMiddleNode =
                         directory.GetRouter RouterType.Normal
 
-                    use! guardNode = TorGuard.NewClient guardEndPoint
+                    use! guardNode =
+                        TorGuard.NewClientWithIdentity
+                            guardEndPoint
+                            (randomGuardNode.GetIdentityKey() |> Some)
+
                     let circuit = TorCircuit guardNode
                     do! circuit.Create randomGuardNode |> Async.Ignore
                     do! circuit.Extend randomMiddleNode |> Async.Ignore
@@ -530,17 +540,11 @@ type TorServiceHost
 
                                 let encKeyCert =
                                     let convertedX25519Key =
-                                        match
-                                            Ed25519.Ed25519PublicKeyFromCurve25519
-                                                (
-                                                    encKeyBytes,
-                                                    false
-                                                )
-                                            with
-                                        | true, output -> output
-                                        | false, _ ->
-                                            failwith
-                                                "Should not happen, Ed25519PublicKeyFromCurve25519 will never return false"
+                                        Ed25519.Ed25519PublicKeyFromCurve25519(
+                                            encKeyBytes,
+                                            0,
+                                            false
+                                        )
 
                                     Certificate.CreateNew
                                         CertType.IntroPointEncKeySignedByDescriptorSigningKey

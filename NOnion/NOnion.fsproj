@@ -12,12 +12,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="auth_dirs.inc" />
     <Compile Include="TorLogger.fs" />
     <Compile Include="Constants.fs" />
     <Compile Include="DestroyReason.fs" />
     <Compile Include="RelayIntroduceStatus.fs" />
     <Compile Include="Exceptions.fs" />
     <Compile Include="HandshakeType.fs" />
+    <Compile Include="Utility\EmbeddedResourceUtility.fs" />
+    <Compile Include="Utility\PemUtility.fs" />
     <Compile Include="Utility\FSharpUtil.fs" />
     <Compile Include="Utility\ResultUtil.fs" />
     <Compile Include="Utility\MailboxUtil.fs" />
@@ -34,6 +37,7 @@
     <Compile Include="Utility\BinaryIO.fs" />
     <Compile Include="Utility\CertificateUtil.fs" />
     <Compile Include="Utility\Hex.fs" />
+    <Compile Include="Crypto\DirectoryCipher.fs" />
     <Compile Include="Crypto\TorStreamCipher.fs" />
     <Compile Include="Crypto\HiddenServicesCipher.fs" />
     <Compile Include="Crypto\Kdf\KdfResult.fs" />
@@ -77,6 +81,7 @@
     <Compile Include="Directory\ServerDescriptorsDocument.fs" />
     <Compile Include="Directory\NetworkStatusDocument.fs" />
     <Compile Include="Directory\ServerMicrodescriptorDocument.fs" />
+    <Compile Include="Directory\KeyCertificatesDocument.fs" />
     <Compile Include="Directory\HiddenServiceDescriptorDocument.fs" />
     <Compile Include="Directory\HiddenServiceFirstLayerDescriptorDocument.fs" />
     <Compile Include="Directory\HiddenServiceSecondLayerDescriptorDocument.fs" />
@@ -87,14 +92,13 @@
 
   <ItemGroup>
     <PackageReference Include="Fsharpx.Collections" Version="3.0.1" />
-    <PackageReference Include="Portable.BouncyCastle" Version="1.8.10" />
     <PackageReference Include="System.Memory" Version="4.5.4" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
     <PackageReference Include="System.Threading.Tasks.DataFlow" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Chaos.NaCl\Chaos.NaCl\Chaos.NaCl-Portable.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\bc-csharp\crypto\src\BouncyCastle.Crypto.csproj" />
   </ItemGroup>
 
   <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="ResolveReferences">

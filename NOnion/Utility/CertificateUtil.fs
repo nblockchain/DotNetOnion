@@ -4,9 +4,9 @@ namespace NOnion.Utility
 open System
 open System.IO
 
-open Chaos.NaCl
 open Org.BouncyCastle.Crypto.Signers
 open Org.BouncyCastle.Crypto.Parameters
+open Org.BouncyCastle.Math.EC.Rfc8032
 
 open NOnion
 
@@ -118,14 +118,17 @@ type Certificate =
 
                 signer.GenerateSignature()
             elif signingPrivateKey.Length = 64 then
-                //Expanded private key, we have to sign with Chaos.NaCl
                 let signature = Array.zeroCreate<byte> 64
 
-                Ed25519.SignWithPrehashedPrivateKey(
-                    ArraySegment signature,
-                    ArraySegment unsignedCertificateBytes,
-                    ArraySegment signingPrivateKey,
-                    ArraySegment signingPublicKey
+                Ed25519.SignByExtendedKey(
+                    signingPrivateKey,
+                    signingPublicKey,
+                    0,
+                    unsignedCertificateBytes,
+                    0,
+                    unsignedCertificateBytes.Length,
+                    signature,
+                    0
                 )
 
                 signature
@@ -179,7 +182,7 @@ type Certificate =
             if not(verifier.VerifySignature self.Signature) then
                 failwith "Invalid certificate"
         | None -> ()
-        //TODO: validate datetime
+    //TODO: validate datetime
 
     member self.ToBytes(ignoreSig: bool) =
         Array.concat

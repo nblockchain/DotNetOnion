@@ -9,6 +9,9 @@ open System.Security.Authentication
 open System.Security.Cryptography
 open System.Threading
 
+open Org.BouncyCastle.Security
+open Org.BouncyCastle.X509
+
 open NOnion
 open NOnion.Cells
 open NOnion.Utility
@@ -41,7 +44,13 @@ module ExceptionUtil =
                         | None -> return raise <| FSharpUtil.ReRaise exn
         }
 
-type TorGuard private (client: TcpClient, sslStream: SslStream) =
+type TorGuard
+    private
+    (
+        client: TcpClient,
+        sslStream: SslStream,
+        fingerprintOpt: Option<array<byte>>
+    ) =
     let shutdownToken = new CancellationTokenSource()
 
     let mutable circuitsMap: Map<uint16, ITorCircuit> = Map.empty
@@ -105,7 +114,10 @@ type TorGuard private (client: TcpClient, sslStream: SslStream) =
     let sendMailBox =
         MailboxProcessor.Start(SendMailBoxProcessor, shutdownToken.Token)
 
-    static member NewClient(ipEndpoint: IPEndPoint) =
+    static member private InnerNewClient
+        (ipEndpoint: IPEndPoint)
+        (fingerprintOpt: Option<array<byte>>)
+        =
         async {
             let tcpClient = new TcpClient()
 
@@ -157,8 +169,8 @@ type TorGuard private (client: TcpClient, sslStream: SslStream) =
             |> sprintf "TorGuard: ssl connection to %s guard node authenticated"
             |> TorLogger.Log
 
-            let guard = new TorGuard(tcpClient, sslStream)
-            do! guard.Handshake()
+            let guard = new TorGuard(tcpClient, sslStream, fingerprintOpt)
+            do! guard.Handshake ipEndpoint
 
             ipEndpoint.ToString()
             |> sprintf "TorGuard: connection with %s established"
@@ -168,6 +180,16 @@ type TorGuard private (client: TcpClient, sslStream: SslStream) =
 
             return guard
         }
+
+    static member NewClientWithIdentity ipEndpoint fingerprintOpt =
+        TorGuard.InnerNewClient ipEndpoint fingerprintOpt
+
+    static member NewClientWithIdentityAsync ipEndpoint fingerprintOpt =
+        TorGuard.NewClientWithIdentity ipEndpoint fingerprintOpt
+        |> Async.StartAsTask
+
+    static member NewClient ipEndpoint =
+        TorGuard.InnerNewClient ipEndpoint None
 
     static member NewClientAsync ipEndpoint =
         TorGuard.NewClient ipEndpoint |> Async.StartAsTask
@@ -349,7 +371,118 @@ type TorGuard private (client: TcpClient, sslStream: SslStream) =
 
         Async.Start(readFromStream(), shutdownToken.Token)
 
-    member private self.Handshake() =
+    //TODO: verify ed25519 certs
+    member private self.VerifyCertificates(certs: CellCerts) =
+        let getExactlyOneCert(certType: byte) =
+            let certOpt =
+                certs.Certs
+                |> Seq.filter(fun cert -> cert.Type = certType)
+                |> Seq.tryExactlyOne
+
+            match certOpt with
+            | Some cert -> cert
+            | None ->
+                raise
+                <| GuardConnectionFailedException(
+                    "Cert not found or there were too many with the same type"
+                )
+
+        let validateX509Expiry(certificateBytes: array<byte>) =
+            let certParser = X509CertificateParser()
+            let certificate = certParser.ReadCertificate certificateBytes
+
+            if not certificate.IsValidNow then
+                raise
+                <| GuardConnectionFailedException(
+                    "Router's X509 certificate is expied"
+                )
+
+        let validateIsSignedBy
+            (certBytes: array<byte>)
+            (signingCertBytes: array<byte>)
+            =
+            let certParser = X509CertificateParser()
+            let cert = certParser.ReadCertificate certBytes
+            let signingCert = certParser.ReadCertificate signingCertBytes
+
+            try
+                cert.Verify(signingCert.GetPublicKey())
+                true
+            with
+            | :? InvalidKeyException -> false
+
+        let keyMatches (certBytes: array<byte>) (otherCertBytes: array<byte>) =
+            let certParser = X509CertificateParser()
+            let cert = certParser.ReadCertificate certBytes
+            let otherCert = certParser.ReadCertificate otherCertBytes
+            cert.GetPublicKey() = otherCert.GetPublicKey()
+
+        let isRSA1024(certBytes: array<byte>) =
+            use cert =
+                new System.Security.Cryptography.X509Certificates.X509Certificate2(
+                    certBytes
+                )
+
+            cert.PublicKey.Key.KeySize = 1024
+
+        let getPublicKeyBytes(certBytes: array<byte>) =
+            use cert =
+                new System.Security.Cryptography.X509Certificates.X509Certificate2(
+                    certBytes
+                )
+
+            cert.GetPublicKey()
+
+        let linkCertificate =
+            (getExactlyOneCert Constants.CertTypes.Link)
+                .Certificate
+
+        let idCertificate =
+            (getExactlyOneCert Constants.CertTypes.ID)
+                .Certificate
+
+        let tlsCertificate = sslStream.RemoteCertificate.GetRawCertData()
+
+        validateX509Expiry linkCertificate
+        validateX509Expiry idCertificate
+
+        if keyMatches tlsCertificate linkCertificate |> not then
+            raise
+            <| GuardConnectionFailedException(
+                "The certified key in the Link certificate does not match the link key that was used to negotiate the TLS connection"
+            )
+
+        if isRSA1024 idCertificate |> not then
+            raise
+            <| GuardConnectionFailedException(
+                "The certified key in the ID certificate is not a 1024-bit RSA key"
+            )
+
+        if validateIsSignedBy linkCertificate idCertificate |> not then
+            raise
+            <| GuardConnectionFailedException(
+                "Link certificate is not signed with identity key"
+            )
+
+        if validateIsSignedBy idCertificate idCertificate |> not then
+            raise
+            <| GuardConnectionFailedException(
+                "ID certificate is not signed with identity key"
+            )
+
+        match fingerprintOpt with
+        | Some fingerprint ->
+            let sha1 = SHA1.Create()
+            let hash = sha1.ComputeHash(getPublicKeyBytes idCertificate)
+
+            if hash <> fingerprint then
+                raise
+                <| GuardConnectionFailedException("RSA Identity was invalid")
+        | None -> ()
+
+        ()
+
+    member private self.Handshake(expectedIPEndPoint: IPEndPoint) =
         async {
             TorLogger.Log "TorGuard: started handshake process"
 
@@ -362,29 +495,40 @@ type TorGuard private (client: TcpClient, sslStream: SslStream) =
                     }
 
             let! _version = self.ReceiveExpected<CellVersions>()
-            let! _certs = self.ReceiveExpected<CellCerts>()
+            let! certs = self.ReceiveExpected<CellCerts>()
+            self.VerifyCertificates certs
             //TODO: Client authentication isn't implemented yet!
             do! self.ReceiveExpected<CellAuthChallenge>() |> Async.Ignore
             let! netInfo = self.ReceiveExpected<CellNetInfo>()
-            let maybeOtherAddress = netInfo.MyAddresses |> Seq.tryHead
 
-            match maybeOtherAddress with
-            | None ->
-                return
-                    raise
-                    <| GuardConnectionFailedException(
-                        "TorGuard.Handshake: problem in initializing the handshake process"
-                    )
-            | Some otherAddress ->
-                do!
-                    self.Send
-                        Constants.DefaultCircuitId
-                        {
-                            CellNetInfo.Time =
-                                DateTimeUtils.ToUnixTimestamp DateTime.UtcNow
-                            OtherAddress = otherAddress
-                            MyAddresses = List.singleton netInfo.OtherAddress
-                        }
+            let expectedRouterAddress =
+                let ipAddress = expectedIPEndPoint.Address
+
+                {
+                    RouterAddress.Type =
+                        match ipAddress.AddressFamily with
+                        | AddressFamily.InterNetwork -> 04uy //IPv4
+                        | AddressFamily.InterNetworkV6 -> 06uy //IPv6
+                        | _ ->
+                            failwith
+                                "Should not happen: router's IPAddress is not either v4 or v6"
+                    Value = ipAddress.GetAddressBytes()
+                }
+
+            if netInfo.MyAddresses |> Seq.contains expectedRouterAddress |> not then
+                raise
+                <| GuardConnectionFailedException
+                    "Expected router address is not listed in NETINFO"
+
+            do!
+                self.Send
+                    Constants.DefaultCircuitId
+                    {
+                        //Clients SHOULD send "0" as their timestamp, to avoid fingerprinting.
+                        CellNetInfo.Time = 0u
+                        OtherAddress = expectedRouterAddress
+                        MyAddresses = List.empty
+                    }
 
             TorLogger.Log "TorGuard: finished handshake process"
         //TODO: do security checks on handshake data

@@ -197,3 +197,7 @@ module Constants =
 
     let internal CertificateCertifiedKeyLength = 32
     let internal CertificateSignatureLength = 64
+
+    module CertTypes =
+        let Link = 1uy
+        let ID = 2uy

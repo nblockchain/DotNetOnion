@@ -1,3 +1,3 @@
-[submodule "Chaos.NaCl"]
-	path = Chaos.NaCl
-	url = https://github.com/nblockchain/Chaos.NaCl.git
+[submodule "bc-csharp"]
+	path = bc-csharp
+	url = https://github.com/aarani/bc-csharp.git

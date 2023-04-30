@@ -32,10 +32,10 @@ type IntroductionPointEntry =
                 let words = lines.Peek().Split ' ' |> MutableQueue<string>
 
                 let rec readBlock(state: string) =
-                    let line = lines.Dequeue()
+                    let line = sprintf "%s\n" (lines.Dequeue())
 
                     if line.StartsWith "-----END" then
-                        state
+                        state + line
                     else
                         readBlock(state + line)
 
@@ -73,28 +73,23 @@ type IntroductionPointEntry =
                         }
                 | "auth-key" ->
                     lines.Dequeue() |> ignore<string>
-                    //get rid of begin
-                    lines.Dequeue() |> ignore<string>
 
                     innerParse
                         { state with
                             AuthKey =
                                 readBlock String.Empty
-                                |> Convert.FromBase64String
+                                |> PemUtility.PemToByteArray
                                 |> Certificate.FromBytes
                                 |> Some
                         }
                 | "enc-key-cert" ->
                     lines.Dequeue() |> ignore<string>
-                    //get rid of begin
-                    lines.Dequeue() |> ignore<string>
-
 
                     innerParse
                         { state with
                             EncKeyCert =
                                 readBlock String.Empty
-                                |> Convert.FromBase64String
+                                |> PemUtility.PemToByteArray
                                 |> Certificate.FromBytes
                                 |> Some
                         }
@@ -211,7 +206,7 @@ type HiddenServiceDescriptorDocument =
         let lines = stringToParse.Split '\n' |> MutableQueue<string>
 
         let rec readBlock(state: string) =
-            let line = lines.Dequeue()
+            let line = sprintf "%s\n" (lines.Dequeue())
 
             if line.StartsWith "-----END" then
                 state + line

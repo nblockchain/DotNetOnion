@@ -28,6 +28,11 @@ type CircuitNodeDetail =
         NTorOnionKey: array<byte> *
         IdentityKey: array<byte>
 
+    member self.GetIdentityKey() =
+        match self with
+        | Create(_endpoint, _onionKey, identityKey) -> identityKey
+        | FastCreate -> failwith "GetIdentityKey was called on FastCreate"
+
 type private CircuitIdTaskResult = OperationResult<Task<uint16>>
 
 type private RequestSendIntroduceResult =

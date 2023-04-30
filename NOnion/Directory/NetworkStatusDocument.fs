@@ -3,7 +3,10 @@
 open System
 open System.Text
 
+open Newtonsoft.Json
+
 open NOnion
+open NOnion.Crypto.DirectoryCipher
 open NOnion.Utility
 
 type DirectorySourceEntry =
@@ -216,15 +219,17 @@ type RouterStatusEntry =
 
 type DirectorySignature =
     {
+        Algorithm: Option<string>
         Identity: Option<string>
-        Digest: Option<string>
+        SigningKeyDigest: Option<string>
         Signature: Option<string>
     }
 
     static member Empty =
         {
-            DirectorySignature.Identity = None
-            Digest = None
+            DirectorySignature.Algorithm = None
+            Identity = None
+            SigningKeyDigest = None
             Signature = None
         }
 
@@ -239,7 +244,7 @@ type DirectorySignature =
                     if line.StartsWith "-----END" then
                         state + line
                     else
-                        readBlock(state + line)
+                        readBlock(state + line + "\n")
 
                 let nextLine = lines.Peek()
 
@@ -252,12 +257,25 @@ type DirectorySignature =
                 | "directory-signature" when state.Identity = None ->
                     lines.Dequeue() |> ignore<string>
 
-                    innerParse
-                        { state with
-                            DirectorySignature.Identity = readWord() |> Some
-                            Digest = readWord() |> Some
-                            Signature = readBlock String.Empty |> Some
-                        }
+                    let algs = [ "sha1"; "sha256" ]
+                    let maybeAlg = readWord()
+
+                    if Seq.contains maybeAlg algs then
+                        innerParse
+                            { state with
+                                DirectorySignature.Algorithm = maybeAlg |> Some
+                                Identity = readWord() |> Some
+                                SigningKeyDigest = readWord() |> Some
+                                Signature = readBlock String.Empty |> Some
+                            }
+                    else
+                        innerParse
+                            { state with
+                                DirectorySignature.Algorithm = "sha1" |> Some
+                                Identity = readWord() |> Some
+                                SigningKeyDigest = readWord() |> Some
+                                Signature = readBlock String.Empty |> Some
+                            }
                 | "directory-signature" when state.Identity <> None -> state
                 | _ -> state
 
@@ -282,6 +300,11 @@ type NetworkStatusDocument =
         SharedRandomPreviousValue: Option<string>
         SharedRandomCurrentValue: Option<string>
         BandwithWeights: Option<string>
+
+        [<JsonIgnore>]
+        SHA1Digest: Option<array<byte>>
+        [<JsonIgnore>]
+        SHA256Digest: Option<array<byte>>
 
         Params: Map<string, string>
         Packages: List<string>
@@ -309,6 +332,9 @@ type NetworkStatusDocument =
             SharedRandomPreviousValue = None
             SharedRandomCurrentValue = None
             BandwithWeights = None
+
+            SHA1Digest = None
+            SHA256Digest = None
 
             Params = Map.empty
             Packages = List.Empty
@@ -468,7 +494,22 @@ type NetworkStatusDocument =
                         Routers = RouterStatusEntry.Parse lines :: state.Routers
                     }
                 | "directory-signature" ->
+                    let documentForDigest =
+                        stringToParse.Split(
+                            Array.singleton "directory-signature",
+                            StringSplitOptions.RemoveEmptyEntries
+                        ).[0]
+                        + "directory-signature "
+
                     { state with
+                        SHA1Digest =
+                            Encoding.ASCII.GetBytes documentForDigest
+                            |> SHA1
+                            |> Some
+                        SHA256Digest =
+                            Encoding.ASCII.GetBytes documentForDigest
+                            |> SHA256
+                            |> Some
                         Signatures =
                             DirectorySignature.Parse lines :: state.Signatures
                     }

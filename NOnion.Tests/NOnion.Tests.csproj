@@ -10,14 +10,20 @@
     <PackageReference Include="NUnit" Version="3.12.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.16.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
-    <PackageReference Include="Portable.BouncyCastle" Version="1.8.10" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\bc-csharp\crypto\src\BouncyCastle.Crypto.csproj" />
     <ProjectReference Include="..\NOnion\NOnion.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Directory-Samples\KeyCertificate.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Directory-Samples\KeyCertificate.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Directory-Samples\MicroDescriptor.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

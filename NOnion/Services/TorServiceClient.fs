@@ -75,7 +75,10 @@ type TorServiceClient =
                                             hsDirectory
 
                                     use! guardNode =
-                                        TorGuard.NewClient guardEndPoint
+                                        TorGuard.NewClientWithIdentity
+                                            guardEndPoint
+                                            (randomGuardNode.GetIdentityKey()
+                                             |> Some)
 
                                     let circuit = TorCircuit guardNode
 
@@ -120,8 +123,8 @@ type TorServiceClient =
 
                                 with
                                 | :? NOnionException ->
-                                        // Using micro descriptors means we might use servers that are hibernating or etc
-                                        // so we need to be able to try multiple servers to receive the descriptor.
+                                    // Using micro descriptors means we might use servers that are hibernating or etc
+                                    // so we need to be able to try multiple servers to receive the descriptor.
                                     return! downloadDescriptor responsibleDirs
                         }
 
@@ -394,7 +397,11 @@ type TorServiceClient =
             let! endpoint, guardnode = directory.GetRouter RouterType.Guard
             let! _, rendezvousNode = directory.GetRouter RouterType.Normal
 
-            let! rendezvousGuard = TorGuard.NewClient endpoint
+            let! rendezvousGuard =
+                TorGuard.NewClientWithIdentity
+                    endpoint
+                    (guardnode.GetIdentityKey() |> Some)
+
             let rendezvousCircuit = TorCircuit rendezvousGuard
 
             do! rendezvousCircuit.Create guardnode |> Async.Ignore

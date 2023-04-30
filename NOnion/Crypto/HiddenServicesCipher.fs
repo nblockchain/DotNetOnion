@@ -6,7 +6,7 @@ open Org.BouncyCastle.Crypto.Agreement
 open Org.BouncyCastle.Crypto.Digests
 open Org.BouncyCastle.Crypto.Parameters
 open Org.BouncyCastle.Crypto.Signers
-open Chaos.NaCl
+open Org.BouncyCastle.Math.EC.Rfc8032
 
 open NOnion
 open NOnion.Utility
@@ -47,7 +47,7 @@ module HiddenServicesCipher =
         let output = Array.zeroCreate length
 
         digestEngine.BlockUpdate(data, 0, data.Length)
-        digestEngine.DoFinal(output, 0, length) |> ignore<int>
+        digestEngine.OutputFinal(output, 0, length) |> ignore<int>
         output
 
     let CalculateBlindingFactor
@@ -84,12 +84,14 @@ module HiddenServicesCipher =
         (blindingFactor: array<byte>)
         (publicKey: array<byte>)
         =
+        let publicKeySize = 32
+        let output = Array.zeroCreate publicKeySize
 
-        Ed25519Clamp blindingFactor
+        if Ed25519.BlindPublicKey(publicKey, 0, blindingFactor, 0, output, 0) then
+            output
+        else
+            failwith "CalculateBlindedPublicKey: key blinding failed."
 
-        match Ed25519.CalculateBlindedPublicKey(publicKey, blindingFactor) with
-        | true, output -> output
-        | false, _ -> failwith "can't calculate blinded public key"
 
     let CalculateExpandedBlindedPrivateKey
         (blindingFactor: array<byte>)
@@ -104,17 +106,14 @@ module HiddenServicesCipher =
         Ed25519Clamp blindingFactor
         Ed25519Clamp expandedMasterPrivateKey
 
-        match
-            Ed25519.CalculateBlindedPrivateKey
-                (
-                    expandedMasterPrivateKey,
-                    blindingFactor,
-                    "Derive temporary signing key hash input"
-                )
-            with
-        | true, output -> output
-        | false, _ -> failwith "can't calculate blinded private key"
 
+        Ed25519.BlindPrivateKey(
+            expandedMasterPrivateKey,
+            0,
+            blindingFactor,
+            0,
+            "Derive temporary signing key hash input"
+        )
 
     let BuildBlindedPublicKey
         (periodNumber: uint64, periodLength: uint64)

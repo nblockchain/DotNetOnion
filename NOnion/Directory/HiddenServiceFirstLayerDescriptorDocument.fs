@@ -72,7 +72,7 @@ type HiddenServiceFirstLayerDescriptorDocument =
         let lines = stringToParse.Split '\n' |> MutableQueue<string>
 
         let rec readBlock(state: string) =
-            let line = lines.Dequeue()
+            let line = sprintf "%s\n" (lines.Dequeue())
 
             if line.StartsWith "-----END" then
                 state + line
@@ -153,16 +153,8 @@ type HiddenServiceFirstLayerDescriptorDocument =
 
                     { state with
                         HiddenServiceFirstLayerDescriptorDocument.SigningKeyCert =
-                            (readBlock String.Empty)
-                                .Replace(
-                                    "-----BEGIN ED25519 CERT-----",
-                                    String.Empty
-                                )
-                                .Replace(
-                                    "-----END ED25519 CERT-----",
-                                    String.Empty
-                                )
-                            |> Convert.FromBase64String
+                            readBlock String.Empty
+                            |> PemUtility.PemToByteArray
                             |> Certificate.FromBytes
                             |> Some
                     }
@@ -176,17 +168,10 @@ type HiddenServiceFirstLayerDescriptorDocument =
                 | "superencrypted" ->
                     lines.Dequeue() |> ignore<string>
 
-                    let payloadString = readBlock String.Empty
-
                     { state with
                         HiddenServiceFirstLayerDescriptorDocument.EncryptedPayload =
-                            payloadString
-                                .Replace(
-                                    "-----BEGIN MESSAGE-----",
-                                    String.Empty
-                                )
-                                .Replace("-----END MESSAGE-----", String.Empty)
-                            |> Convert.FromBase64String
+                            readBlock String.Empty
+                            |> PemUtility.PemToByteArray
                             |> Some
                     }
                 | _ ->
