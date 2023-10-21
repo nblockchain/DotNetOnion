@@ -71,7 +71,7 @@ type TorStream(circuit: TorCircuit) =
                 match streamState with
                 | Connected streamId ->
                     do!
-                        circuit.SendRelayCell
+                        circuit.AsyncSendRelayCell
                             streamId
                             (RelayEnd EndReason.Done)
                             None
@@ -99,11 +99,11 @@ type TorStream(circuit: TorCircuit) =
                             match Seq.tryHeadTail dataChunks with
                             | None -> ()
                             | Some(head, nextDataChunks) ->
-                                let! lastNode = circuit.GetLastNode()
+                                let! lastNode = circuit.AsyncGetLastNode()
                                 lastNode.Window.PackageDecrease()
 
                                 do!
-                                    circuit.SendRelayCell
+                                    circuit.AsyncSendRelayCell
                                         streamId
                                         (head
                                          |> Seq.toArray
@@ -138,7 +138,7 @@ type TorStream(circuit: TorCircuit) =
                 |> TorLogger.Log
 
                 do!
-                    circuit.SendRelayCell
+                    circuit.AsyncSendRelayCell
                         streamId
                         (RelayBegin
                             {
@@ -165,7 +165,7 @@ type TorStream(circuit: TorCircuit) =
                 |> TorLogger.Log
 
                 do!
-                    circuit.SendRelayCell
+                    circuit.AsyncSendRelayCell
                         streamId
                         RelayData.RelayBeginDirectory
                         None
@@ -218,7 +218,7 @@ type TorStream(circuit: TorCircuit) =
                 match streamState with
                 | Connected streamId ->
                     return!
-                        circuit.SendRelayCell
+                        circuit.AsyncSendRelayCell
                             streamId
                             RelayData.RelaySendMe
                             None
@@ -432,14 +432,18 @@ type TorStream(circuit: TorCircuit) =
     override _.Flush() =
         ()
 
-    static member Accept (streamId: uint16) (circuit: TorCircuit) =
+    static member AsyncAccept (streamId: uint16) (circuit: TorCircuit) =
         async {
             // We can't use the "use" keyword since this stream needs
             // to outlive this function.
             let stream = new TorStream(circuit)
-            do! stream.RegisterIncomingStream streamId
+            do! stream.AsyncRegisterIncomingStream streamId
 
-            do! circuit.SendRelayCell streamId (RelayConnected Array.empty) None
+            do!
+                circuit.AsyncSendRelayCell
+                    streamId
+                    (RelayConnected Array.empty)
+                    None
 
             sprintf
                 "TorStream[%i,%i]: incoming stream accepted"
@@ -450,7 +454,7 @@ type TorStream(circuit: TorCircuit) =
             return stream
         }
 
-    member __.End() =
+    member __.AsyncEnd() =
         async {
             let! sendResult =
                 streamControlMailBox.PostAndAsyncReply StreamControlMessage.End
@@ -459,9 +463,9 @@ type TorStream(circuit: TorCircuit) =
         }
 
     member self.EndAsync() =
-        self.End() |> Async.StartAsTask
+        self.AsyncEnd() |> Async.StartAsTask
 
-    member self.ConnectToService(port: int) =
+    member self.AsyncConnectToService(port: int) =
         async {
             let! completionTaskRes =
                 streamControlMailBox.PostAndAsyncReply(
@@ -482,7 +486,7 @@ type TorStream(circuit: TorCircuit) =
                 |> FSharpUtil.WithTimeout Constants.StreamCreationTimeout
         }
 
-    member self.ConnectToDirectory() =
+    member self.AsyncConnectToDirectory() =
         async {
             let! completionTaskResult =
                 streamControlMailBox.PostAndAsyncReply(
@@ -503,9 +507,9 @@ type TorStream(circuit: TorCircuit) =
         }
 
     member self.ConnectToDirectoryAsync() =
-        self.ConnectToDirectory() |> Async.StartAsTask
+        self.AsyncConnectToDirectory() |> Async.StartAsTask
 
-    member self.ConnectToOutside (address: string) (port: int) =
+    member self.AsyncConnectToOutside (address: string) (port: int) =
         async {
             let! completionTaskRes =
                 streamControlMailBox.PostAndAsyncReply(
@@ -527,9 +531,9 @@ type TorStream(circuit: TorCircuit) =
         }
 
     member self.ConnectToOutsideAsync(address, port) =
-        self.ConnectToOutside address port |> Async.StartAsTask
+        self.AsyncConnectToOutside address port |> Async.StartAsTask
 
-    member private self.RegisterIncomingStream(streamId: uint16) =
+    member private self.AsyncRegisterIncomingStream(streamId: uint16) =
         async {
             let! registerationResult =
                 streamControlMailBox.PostAndAsyncReply(fun replyChannel ->

@@ -15,7 +15,7 @@ type TorHttpClient(stream: Stream, host: string) =
     let ReceiveAll memStream =
         stream.CopyToAsync memStream |> Async.AwaitTask
 
-    member __.GetAsString (path: string) (forceUncompressed: bool) =
+    member __.AsyncGetAsString (path: string) (forceUncompressed: bool) =
         async {
             let headers =
                 let supportedCompressionAlgorithms =
@@ -115,7 +115,7 @@ type TorHttpClient(stream: Stream, host: string) =
                         compressionMethod
         }
 
-    member __.PostString (path: string) (payload: string) =
+    member __.AsyncPostString (path: string) (payload: string) =
         async {
             let headers =
                 [
@@ -204,4 +204,4 @@ type TorHttpClient(stream: Stream, host: string) =
         }
 
     member self.GetAsStringAsync path forceUncompressed =
-        self.GetAsString path forceUncompressed |> Async.StartAsTask
+        self.AsyncGetAsString path forceUncompressed |> Async.StartAsTask

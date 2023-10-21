@@ -101,13 +101,13 @@ type TorDirectory =
                 )
 
             use keyRetrievalStream = new TorStream(circuit)
-            do! keyRetrievalStream.ConnectToDirectory() |> Async.Ignore
+            do! keyRetrievalStream.AsyncConnectToDirectory() |> Async.Ignore
 
             let httpClient =
                 TorHttpClient(keyRetrievalStream, Constants.DefaultHttpHost)
 
             let! downloadedKeys =
-                httpClient.GetAsString
+                httpClient.AsyncGetAsString
                     (sprintf
                         "/tor/keys/fp-sk/%s"
                         (String.Join("+", keysToDownload)))
@@ -168,11 +168,11 @@ type TorDirectory =
             return ()
         }
 
-    member self.GetMicroDescriptorByIdentity
+    member self.AsyncGetMicroDescriptorByIdentity
         (identity: string)
         : Async<MicroDescriptorEntry> =
         async {
-            let! networkStatus = self.GetLiveNetworkStatus()
+            let! networkStatus = self.AsyncGetLiveNetworkStatus()
 
             let routerConsensusEntryOpt =
                 networkStatus.Routers
@@ -193,7 +193,7 @@ type TorDirectory =
                     let directoryRouter = self.GetRandomDirectorySource()
 
                     use! guard =
-                        TorGuard.NewClient(
+                        TorGuard.AsyncNewClient(
                             IPEndPoint(
                                 IPAddress.Parse(directoryRouter.IP.Value),
                                 directoryRouter.OnionRouterPort.Value
@@ -210,16 +210,16 @@ type TorDirectory =
                         * until 1 week after key update).
                         *)
                     do!
-                        circuit.Create CircuitNodeDetail.FastCreate
+                        circuit.AsyncCreate CircuitNodeDetail.FastCreate
                         |> Async.Ignore
 
-                    do! stream.ConnectToDirectory() |> Async.Ignore
+                    do! stream.AsyncConnectToDirectory() |> Async.Ignore
 
                     let httpClient =
                         TorHttpClient(stream, directoryRouter.IP.Value)
 
                     let! response =
-                        httpClient.GetAsString
+                        httpClient.AsyncGetAsString
                             (sprintf
                                 "/tor/micro/d/%s"
                                 routerConsensusEntry.MicroDescriptorDigest.Value)
@@ -246,7 +246,7 @@ type TorDirectory =
 
     member private self.GetRouterDetailByIdentity(identity: string) =
         async {
-            let! networkStatus = self.GetLiveNetworkStatus()
+            let! networkStatus = self.AsyncGetLiveNetworkStatus()
 
             let routerEntryOpt =
                 networkStatus.Routers
@@ -258,7 +258,8 @@ type TorDirectory =
                     failwith
                         "TorDirectory::GetRouterDetailByIdentity: router was not in the latest consensus"
             | Some routerEntry ->
-                let! descriptor = self.GetMicroDescriptorByIdentity identity
+                let! descriptor =
+                    self.AsyncGetMicroDescriptorByIdentity identity
 
                 let fingerprintBytes =
                     Base64Util.FromString(routerEntry.GetIdentity())
@@ -282,7 +283,7 @@ type TorDirectory =
         }
 
 
-    member self.GetRouter(filter: RouterType) =
+    member self.AsyncGetRouter(filter: RouterType) =
         async {
             do! self.UpdateConsensusIfNotLive()
 
@@ -313,9 +314,9 @@ type TorDirectory =
         }
 
     member self.GetRouterAsync(filter: RouterType) =
-        self.GetRouter filter |> Async.StartAsTask
+        self.AsyncGetRouter filter |> Async.StartAsTask
 
-    member self.GetCircuitNodeDetailByIdentity(identity: string) =
+    member self.AsyncGetCircuitNodeDetailByIdentity(identity: string) =
         async {
             let! _endpoint, circuitNodeDetail =
                 self.GetRouterDetailByIdentity identity
@@ -336,7 +337,7 @@ type TorDirectory =
                 let directoryRouter = self.GetRandomDirectorySource()
 
                 use! guard =
-                    TorGuard.NewClient(
+                    TorGuard.AsyncNewClient(
                         IPEndPoint(
                             IPAddress.Parse(directoryRouter.IP.Value),
                             directoryRouter.OnionRouterPort.Value
@@ -352,14 +353,16 @@ type TorDirectory =
                  * are no more than one week old (according to spec, routers must accept outdated keys
                  * until 1 week after key update).
                  *)
-                do! circuit.Create CircuitNodeDetail.FastCreate |> Async.Ignore
+                do!
+                    circuit.AsyncCreate CircuitNodeDetail.FastCreate
+                    |> Async.Ignore
 
-                do! stream.ConnectToDirectory() |> Async.Ignore
+                do! stream.AsyncConnectToDirectory() |> Async.Ignore
 
                 let httpClient = TorHttpClient(stream, directoryRouter.IP.Value)
 
                 let! response =
-                    httpClient.GetAsString
+                    httpClient.AsyncGetAsString
                         "/tor/status-vote/current/consensus-microdesc"
                         false
 
@@ -370,7 +373,7 @@ type TorDirectory =
                 self.NetworkStatus <- networkStatus
         }
 
-    static member BootstrapWithGuard
+    static member AsyncBootstrapWithGuard
         (guard: TorGuard)
         (cacheDirectory: DirectoryInfo)
         =
@@ -381,11 +384,14 @@ type TorDirectory =
                         let circuit = TorCircuit guard
 
                         do!
-                            circuit.Create CircuitNodeDetail.FastCreate
+                            circuit.AsyncCreate CircuitNodeDetail.FastCreate
                             |> Async.Ignore
 
                         use consensusStream = new TorStream(circuit)
-                        do! consensusStream.ConnectToDirectory() |> Async.Ignore
+
+                        do!
+                            consensusStream.AsyncConnectToDirectory()
+                            |> Async.Ignore
 
                         let consensusHttpClient =
                             TorHttpClient(
@@ -394,7 +400,7 @@ type TorDirectory =
                             )
 
                         let! consensusStr =
-                            consensusHttpClient.GetAsString
+                            consensusHttpClient.AsyncGetAsString
                                 "/tor/status-vote/current/consensus-microdesc"
                                 false
 
@@ -470,7 +476,7 @@ type TorDirectory =
                         let circuit = TorCircuit guard
 
                         do!
-                            circuit.Create CircuitNodeDetail.FastCreate
+                            circuit.AsyncCreate CircuitNodeDetail.FastCreate
                             |> Async.Ignore
 
                         let downloadDescriptorsForChunk
@@ -480,7 +486,7 @@ type TorDirectory =
                                 use descriptorsStream = new TorStream(circuit)
 
                                 do!
-                                    descriptorsStream.ConnectToDirectory()
+                                    descriptorsStream.AsyncConnectToDirectory()
                                     |> Async.Ignore
 
                                 let descriptorsHttpClient =
@@ -490,7 +496,7 @@ type TorDirectory =
                                     )
 
                                 let! descriptorsStr =
-                                    descriptorsHttpClient.GetAsString
+                                    descriptorsHttpClient.AsyncGetAsString
                                         (sprintf
                                             "/tor/micro/d/%s"
                                             (String.concat "-" digestsChunk))
@@ -541,16 +547,16 @@ type TorDirectory =
         }
 
 
-    static member Bootstrap
+    static member AsyncBootstrap
         (nodeEndPoint: IPEndPoint)
         (cacheDirectory: DirectoryInfo)
         =
         async {
-            use! guard = TorGuard.NewClient nodeEndPoint
-            return! TorDirectory.BootstrapWithGuard guard cacheDirectory
+            use! guard = TorGuard.AsyncNewClient nodeEndPoint
+            return! TorDirectory.AsyncBootstrapWithGuard guard cacheDirectory
         }
 
-    member self.GetLiveNetworkStatus() =
+    member self.AsyncGetLiveNetworkStatus() =
         async {
             do! self.UpdateConsensusIfNotLive()
             return self.NetworkStatus
@@ -572,17 +578,18 @@ type TorDirectory =
             nodeEndPoint: IPEndPoint,
             cacheDirectory: DirectoryInfo
         ) =
-        TorDirectory.Bootstrap nodeEndPoint cacheDirectory |> Async.StartAsTask
+        TorDirectory.AsyncBootstrap nodeEndPoint cacheDirectory
+        |> Async.StartAsTask
 
     static member BootstrapWithGuardAsync
         (
             guard: TorGuard,
             cacheDirectory: DirectoryInfo
         ) =
-        TorDirectory.BootstrapWithGuard guard cacheDirectory
+        TorDirectory.AsyncBootstrapWithGuard guard cacheDirectory
         |> Async.StartAsTask
 
-    member self.GetResponsibleHiddenServiceDirectories
+    member self.AsyncGetResponsibleHiddenServiceDirectories
         (blindedPublicKey: array<byte>)
         (sharedRandomValue: string)
         (periodNumber: uint64)
@@ -591,7 +598,7 @@ type TorDirectory =
         =
         async {
 
-            let! networkStatus = self.GetLiveNetworkStatus()
+            let! networkStatus = self.AsyncGetLiveNetworkStatus()
 
             let ByteArrayCompare (x: array<byte>) (y: array<byte>) =
                 let xlen = x.Length

@@ -223,7 +223,7 @@ and TorCircuit
                                 |> encryptMessage onionList
                             Early = early
                         }
-                        |> guard.Send circuitId
+                        |> guard.AsyncSend circuitId
 
                     match relayData with
                     | RelayData _
@@ -656,7 +656,7 @@ and TorCircuit
                             connectionCompletionSource
                         )
 
-                    do! guard.Send circuitId handshakeCell
+                    do! guard.AsyncSend circuitId handshakeCell
 
                     TorLogger.Log(
                         sprintf
@@ -1072,7 +1072,7 @@ and TorCircuit
             failwith
                 "Should not happen: can't get circuitId for non-initialized circuit."
 
-    member __.GetLastNode() =
+    member __.AsyncGetLastNode() =
         async {
             let! lastNodeResult =
                 circuitOperationsMailBox.PostAndAsyncReply
@@ -1081,7 +1081,7 @@ and TorCircuit
             return UnwrapResult lastNodeResult
         }
 
-    member __.SendRelayCell
+    member __.AsyncSendRelayCell
         (streamId: uint16)
         (relayData: RelayData)
         (customDestinationOpt: Option<TorCircuitNode>)
@@ -1100,7 +1100,7 @@ and TorCircuit
             return UnwrapResult sendResult
         }
 
-    member self.Create(guardDetailOpt: CircuitNodeDetail) =
+    member self.AsyncCreate(guardDetailOpt: CircuitNodeDetail) =
         async {
             let! completionTaskRes =
                 circuitOperationsMailBox.PostAndAsyncReply(
@@ -1121,7 +1121,7 @@ and TorCircuit
                 |> FSharpUtil.WithTimeout Constants.CircuitOperationTimeout
         }
 
-    member __.Extend(nodeDetail: CircuitNodeDetail) =
+    member __.AsyncExtend(nodeDetail: CircuitNodeDetail) =
         async {
             let! completionTaskRes =
                 circuitOperationsMailBox.PostAndAsyncReply(
@@ -1138,7 +1138,7 @@ and TorCircuit
                 |> FSharpUtil.WithTimeout Constants.CircuitOperationTimeout
         }
 
-    member __.RegisterAsIntroductionPoint
+    member __.AsyncRegisterAsIntroductionPoint
         (authKeyPairOpt: Option<AsymmetricCipherKeyPair>)
         callback
         disconnectionCallback
@@ -1164,7 +1164,7 @@ and TorCircuit
                 |> FSharpUtil.WithTimeout Constants.CircuitOperationTimeout
         }
 
-    member __.RegisterAsRendezvousPoint(cookie: array<byte>) =
+    member __.AsyncRegisterAsRendezvousPoint(cookie: array<byte>) =
         async {
             let! completionTaskRes =
                 circuitOperationsMailBox.PostAndAsyncReply(
@@ -1186,12 +1186,12 @@ and TorCircuit
         }
 
     member self.ExtendAsync nodeDetail =
-        self.Extend nodeDetail |> Async.StartAsTask
+        self.AsyncExtend nodeDetail |> Async.StartAsTask
 
     member self.CreateAsync guardDetailOpt =
-        self.Create guardDetailOpt |> Async.StartAsTask
+        self.AsyncCreate guardDetailOpt |> Async.StartAsTask
 
-    member __.Introduce(introduceMsg: RelayIntroduce) =
+    member __.AsyncIntroduce(introduceMsg: RelayIntroduce) =
         async {
             let! completionTaskRes =
                 circuitOperationsMailBox.PostAndAsyncReply(
@@ -1211,7 +1211,7 @@ and TorCircuit
                 |> FSharpUtil.WithTimeout Constants.CircuitOperationTimeout
         }
 
-    member __.WaitingForRendezvousJoin
+    member __.AsyncWaitingForRendezvousJoin
         (clientRandomPrivateKey: X25519PrivateKeyParameters)
         (clientRandomPublicKey: X25519PublicKeyParameters)
         (introAuthPublicKey: Ed25519PublicKeyParameters)
@@ -1240,7 +1240,7 @@ and TorCircuit
 
         }
 
-    member __.Rendezvous
+    member __.AsyncRendezvous
         (cookie: array<byte>)
         (clientRandomKey: X25519PublicKeyParameters)
         (introAuthPublicKey: Ed25519PublicKeyParameters)
@@ -1280,14 +1280,14 @@ and TorCircuit
 
         let disconnectCallback = fun () -> disconnectCallback.Invoke()
 
-        self.RegisterAsIntroductionPoint
+        self.AsyncRegisterAsIntroductionPoint
             authKeyPairOpt
             introduceCallback
             disconnectCallback
         |> Async.StartAsTask
 
     member self.RegisterAsRendezvousPointAsync(cookie: array<byte>) =
-        self.RegisterAsRendezvousPoint cookie |> Async.StartAsTask
+        self.AsyncRegisterAsRendezvousPoint cookie |> Async.StartAsTask
 
     member internal __.RegisterStream
         (stream: ITorStream)

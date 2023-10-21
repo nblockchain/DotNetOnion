@@ -181,20 +181,20 @@ type TorGuard
             return guard
         }
 
-    static member NewClientWithIdentity ipEndpoint fingerprintOpt =
+    static member AsyncNewClientWithIdentity ipEndpoint fingerprintOpt =
         TorGuard.InnerNewClient ipEndpoint fingerprintOpt
 
     static member NewClientWithIdentityAsync ipEndpoint fingerprintOpt =
-        TorGuard.NewClientWithIdentity ipEndpoint fingerprintOpt
+        TorGuard.AsyncNewClientWithIdentity ipEndpoint fingerprintOpt
         |> Async.StartAsTask
 
-    static member NewClient ipEndpoint =
+    static member AsyncNewClient ipEndpoint =
         TorGuard.InnerNewClient ipEndpoint None
 
     static member NewClientAsync ipEndpoint =
-        TorGuard.NewClient ipEndpoint |> Async.StartAsTask
+        TorGuard.AsyncNewClient ipEndpoint |> Async.StartAsTask
 
-    member self.Send (circuitId: uint16) (cellToSend: ICell) =
+    member self.AsyncSend (circuitId: uint16) (cellToSend: ICell) =
         async {
             let! sendResult =
                 sendMailBox.PostAndAsyncReply(fun replyChannel ->
@@ -213,7 +213,7 @@ type TorGuard
         }
 
     member self.SendAsync (circuidId: uint16) (cellToSend: ICell) =
-        self.Send circuidId cellToSend |> Async.StartAsTask
+        self.AsyncSend circuidId cellToSend |> Async.StartAsTask
 
     member private __.ReceiveInternal() =
         async {
@@ -487,7 +487,7 @@ type TorGuard
             TorLogger.Log "TorGuard: started handshake process"
 
             do!
-                self.Send
+                self.AsyncSend
                     Constants.DefaultCircuitId
                     {
                         CellVersions.Versions =
@@ -521,7 +521,7 @@ type TorGuard
                     "Expected router address is not listed in NETINFO"
 
             do!
-                self.Send
+                self.AsyncSend
                     Constants.DefaultCircuitId
                     {
                         //Clients SHOULD send "0" as their timestamp, to avoid fingerprinting.
