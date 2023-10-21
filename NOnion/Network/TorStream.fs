@@ -432,7 +432,7 @@ type TorStream(circuit: TorCircuit) =
     override _.Flush() =
         ()
 
-    static member Accept (streamId: uint16) (circuit: TorCircuit) =
+    static member internal Accept (streamId: uint16) (circuit: TorCircuit) =
         async {
             // We can't use the "use" keyword since this stream needs
             // to outlive this function.
@@ -461,7 +461,7 @@ type TorStream(circuit: TorCircuit) =
     member self.EndAsync() =
         self.End() |> Async.StartAsTask
 
-    member self.ConnectToService(port: int) =
+    member internal self.ConnectToService(port: int) =
         async {
             let! completionTaskRes =
                 streamControlMailBox.PostAndAsyncReply(

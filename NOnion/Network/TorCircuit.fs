@@ -1191,7 +1191,7 @@ and TorCircuit
     member self.CreateAsync guardDetailOpt =
         self.Create guardDetailOpt |> Async.StartAsTask
 
-    member __.Introduce(introduceMsg: RelayIntroduce) =
+    member internal __.Introduce(introduceMsg: RelayIntroduce) =
         async {
             let! completionTaskRes =
                 circuitOperationsMailBox.PostAndAsyncReply(
@@ -1211,7 +1211,7 @@ and TorCircuit
                 |> FSharpUtil.WithTimeout Constants.CircuitOperationTimeout
         }
 
-    member __.WaitingForRendezvousJoin
+    member internal __.WaitingForRendezvousJoin
         (clientRandomPrivateKey: X25519PrivateKeyParameters)
         (clientRandomPublicKey: X25519PublicKeyParameters)
         (introAuthPublicKey: Ed25519PublicKeyParameters)
@@ -1240,7 +1240,7 @@ and TorCircuit
 
         }
 
-    member __.Rendezvous
+    member internal __.Rendezvous
         (cookie: array<byte>)
         (clientRandomKey: X25519PublicKeyParameters)
         (introAuthPublicKey: Ed25519PublicKeyParameters)
