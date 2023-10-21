@@ -19,9 +19,8 @@
     <Compile Include="RelayIntroduceStatus.fs" />
     <Compile Include="Exceptions.fs" />
     <Compile Include="HandshakeType.fs" />
-    <Compile Include="Utility\EmbeddedResourceUtility.fs" />
+    <Compile Include="Utility\AsyncUtil.fs" />
     <Compile Include="Utility\PemUtility.fs" />
-    <Compile Include="Utility\FSharpUtil.fs" />
     <Compile Include="Utility\ResultUtil.fs" />
     <Compile Include="Utility\MailboxUtil.fs" />
     <Compile Include="Utility\StreamUtil.fs" />
@@ -90,6 +89,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Fsdk" Version="0.6.0--date20230530-1155.git-3bb8d08" />
     <PackageReference Include="Fsharpx.Collections" Version="3.0.1" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.8.10" />
     <PackageReference Include="System.Memory" Version="4.5.4" />

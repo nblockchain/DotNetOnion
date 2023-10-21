@@ -1,5 +1,7 @@
 ﻿namespace NOnion.Utility
 
+open Fsdk
+
 //FIXME: for some reason FSharpUtil is in NOnion namespace instead of NOnion.Utility
 open NOnion
 

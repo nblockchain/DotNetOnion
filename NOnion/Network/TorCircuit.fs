@@ -1118,7 +1118,7 @@ and TorCircuit
                 completionTaskRes
                 |> UnwrapResult
                 |> Async.AwaitTask
-                |> FSharpUtil.WithTimeout Constants.CircuitOperationTimeout
+                |> AsyncUtil.WithTimeout Constants.CircuitOperationTimeout
         }
 
     member __.Extend(nodeDetail: CircuitNodeDetail) =
@@ -1135,7 +1135,7 @@ and TorCircuit
                 completionTaskRes
                 |> UnwrapResult
                 |> Async.AwaitTask
-                |> FSharpUtil.WithTimeout Constants.CircuitOperationTimeout
+                |> AsyncUtil.WithTimeout Constants.CircuitOperationTimeout
         }
 
     member __.RegisterAsIntroductionPoint
@@ -1161,7 +1161,7 @@ and TorCircuit
                 completionTaskRes
                 |> UnwrapResult
                 |> Async.AwaitTask
-                |> FSharpUtil.WithTimeout Constants.CircuitOperationTimeout
+                |> AsyncUtil.WithTimeout Constants.CircuitOperationTimeout
         }
 
     member __.RegisterAsRendezvousPoint(cookie: array<byte>) =
@@ -1182,7 +1182,7 @@ and TorCircuit
                 completionTaskRes
                 |> UnwrapResult
                 |> Async.AwaitTask
-                |> FSharpUtil.WithTimeout Constants.CircuitOperationTimeout
+                |> AsyncUtil.WithTimeout Constants.CircuitOperationTimeout
         }
 
     member self.ExtendAsync nodeDetail =
@@ -1208,7 +1208,7 @@ and TorCircuit
                 completionTaskRes
                 |> UnwrapResult
                 |> Async.AwaitTask
-                |> FSharpUtil.WithTimeout Constants.CircuitOperationTimeout
+                |> AsyncUtil.WithTimeout Constants.CircuitOperationTimeout
         }
 
     member __.WaitingForRendezvousJoin
@@ -1236,7 +1236,7 @@ and TorCircuit
                 completionTaskRes
                 |> UnwrapResult
                 |> Async.AwaitTask
-                |> FSharpUtil.WithTimeout Constants.CircuitRendezvousTimeout
+                |> AsyncUtil.WithTimeout Constants.CircuitRendezvousTimeout
 
         }
 

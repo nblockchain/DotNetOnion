@@ -13,7 +13,7 @@ open NOnion.Crypto
 open NOnion.Network
 open NOnion.Http
 open NOnion.Utility
-open NOnion.Utility.FSharpUtil
+open NOnion.Utility.AsyncUtil
 
 type RouterType =
     | Normal
@@ -48,7 +48,8 @@ type TorDirectory =
 
     static member private GetTrustedAuthorities() =
         let authDirText =
-            EmbeddedResourceUtility
+            Fsdk
+                .Misc
                 .ExtractEmbeddedResourceFileContents("auth_dirs.inc")
                 .Replace("\r\n", "\n")
 

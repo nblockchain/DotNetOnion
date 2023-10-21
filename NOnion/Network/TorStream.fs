@@ -479,7 +479,7 @@ type TorStream(circuit: TorCircuit) =
                 completionTaskRes
                 |> UnwrapResult
                 |> Async.AwaitTask
-                |> FSharpUtil.WithTimeout Constants.StreamCreationTimeout
+                |> AsyncUtil.WithTimeout Constants.StreamCreationTimeout
         }
 
     member self.ConnectToDirectory() =
@@ -499,7 +499,7 @@ type TorStream(circuit: TorCircuit) =
                 completionTaskResult
                 |> UnwrapResult
                 |> Async.AwaitTask
-                |> FSharpUtil.WithTimeout Constants.StreamCreationTimeout
+                |> AsyncUtil.WithTimeout Constants.StreamCreationTimeout
         }
 
     member self.ConnectToDirectoryAsync() =
@@ -523,7 +523,7 @@ type TorStream(circuit: TorCircuit) =
                 completionTaskRes
                 |> UnwrapResult
                 |> Async.AwaitTask
-                |> FSharpUtil.WithTimeout Constants.StreamCreationTimeout
+                |> AsyncUtil.WithTimeout Constants.StreamCreationTimeout
         }
 
     member self.ConnectToOutsideAsync(address, port) =

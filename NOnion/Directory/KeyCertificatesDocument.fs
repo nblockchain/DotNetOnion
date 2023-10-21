@@ -6,7 +6,7 @@ open System.Text
 open Org.BouncyCastle.Asn1
 
 open NOnion.Crypto.DirectoryCipher
-open NOnion.Utility.FSharpUtil
+open NOnion.Utility.AsyncUtil
 open NOnion.Utility.PemUtility
 
 type KeyCertificateEntry =
