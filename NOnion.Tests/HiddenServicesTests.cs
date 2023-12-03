@@ -16,6 +16,7 @@ using Org.BouncyCastle.Security;
 using NOnion.Network;
 using NOnion.Http;
 using NOnion.Cells.Relay;
+using NOnion.Client;
 using NOnion.Directory;
 using NOnion.Tests.Utility;
 using NOnion.Services;
@@ -24,6 +25,23 @@ namespace NOnion.Tests
 {
     public class HiddenServicesTests
     {
+        [OneTimeSetUp]
+        public void Init()
+        {
+            cachePath =
+                new DirectoryInfo(
+                    Path.Combine(
+                        Path.GetTempPath(),
+                        Path.GetFileNameWithoutExtension(
+                            Path.GetRandomFileName()
+                        )
+                    )
+                );
+            cachePath.Create();
+        }
+
+        private DirectoryInfo cachePath = null;
+        
         /* It's possible that the router returned by GetRandomFallbackDirectory or
          * GetRandomRoutersForDirectoryBrowsing be inaccessable so we need to continue
          * retrying if an exceptions happened to make sure the issues are not related
@@ -33,11 +51,8 @@ namespace NOnion.Tests
 
         private async Task CreateIntroductionCircuit()
         {
-            var node = (CircuitNodeDetail.Create)(await CircuitHelper.GetRandomRoutersForDirectoryBrowsingWithRetry()).First();
-            using TorGuard guard = await TorGuard.NewClientAsync(node.EndPoint);
-            var circuit = new TorCircuit(guard);
-
-            await circuit.CreateAsync(CircuitNodeDetail.FastCreate);
+            using TorClient torClient = await TorClient.BootstrapWithGithubAsync(cachePath);
+            var circuit = await torClient.CreateCircuitAsync(1, CircuitPurpose.Unknown, FSharpOption<CircuitNodeDetail>.None);
             await circuit.RegisterAsIntroductionPointAsync(FSharpOption<AsymmetricCipherKeyPair>.None, StubCallback, DisconnectionCallback);
         }
 
@@ -61,12 +76,8 @@ namespace NOnion.Tests
             var array = new byte[Constants.RendezvousCookieLength];
             RandomNumberGenerator.Create().GetNonZeroBytes(array);
 
-            var nodes = await CircuitHelper.GetRandomRoutersForDirectoryBrowsingWithRetry(2);
-            using TorGuard guard = await TorGuard.NewClientAsync(((CircuitNodeDetail.Create)nodes[0]).EndPoint);
-            var circuit = new TorCircuit(guard);
-
-            await circuit.CreateAsync(nodes[0]);
-            await circuit.ExtendAsync(nodes[1]);
+            using TorClient torClient = await TorClient.BootstrapWithGithubAsync(cachePath);
+            var circuit = await torClient.CreateCircuitAsync(2, CircuitPurpose.Unknown, FSharpOption<CircuitNodeDetail>.None);
             await circuit.RegisterAsRendezvousPointAsync(array);
         }
 
@@ -92,10 +103,10 @@ namespace NOnion.Tests
 
         public async Task BrowseFacebookOverHS()
         {
-            TorDirectory directory = await TorDirectory.BootstrapAsync(FallbackDirectorySelector.GetRandomFallbackDirectory(), new DirectoryInfo(Path.GetTempPath()));
+            using TorClient torClient = await TorClient.BootstrapWithGithubAsync(cachePath);
 
-            var client = await TorServiceClient.ConnectAsync(directory, "facebookwkhpilnemxj7asaniu7vnjjbiltxjqhye3mhbshg7kx5tfyd.onion");
-            var httpClient = new TorHttpClient(client.GetStream(), "facebookwkhpilnemxj7asaniu7vnjjbiltxjqhye3mhbshg7kx5tfyd.onion");
+            var serviceClient = await TorServiceClient.ConnectAsync(torClient, "facebookwkhpilnemxj7asaniu7vnjjbiltxjqhye3mhbshg7kx5tfyd.onion");
+            var httpClient = new TorHttpClient(serviceClient.GetStream(), "facebookwkhpilnemxj7asaniu7vnjjbiltxjqhye3mhbshg7kx5tfyd.onion");
 
             try
             {
@@ -117,11 +128,11 @@ namespace NOnion.Tests
 
         public async Task BrowseFacebookOverHSWithTLS()
         {
-            TorDirectory directory = await TorDirectory.BootstrapAsync(FallbackDirectorySelector.GetRandomFallbackDirectory(), new DirectoryInfo(Path.GetTempPath()));
+            using TorClient torClient = await TorClient.BootstrapWithGithubAsync(cachePath);
+            
+            var serviceClient = await TorServiceClient.ConnectAsync(torClient, "facebookwkhpilnemxj7asaniu7vnjjbiltxjqhye3mhbshg7kx5tfyd.onion:443");
 
-            var client = await TorServiceClient.ConnectAsync(directory, "facebookwkhpilnemxj7asaniu7vnjjbiltxjqhye3mhbshg7kx5tfyd.onion:443");
-
-            var sslStream = new SslStream(client.GetStream(), true, (sender, cert, chain, sslPolicyErrors) => true);
+            var sslStream = new SslStream(serviceClient.GetStream(), true, (sender, cert, chain, sslPolicyErrors) => true);
             await sslStream.AuthenticateAsClientAsync(string.Empty, null, SslProtocols.Tls12, false);
 
             var httpClientOverSslStream = new TorHttpClient(sslStream, "www.facebookwkhpilnemxj7asaniu7vnjjbiltxjqhye3mhbshg7kx5tfyd.onion");
@@ -147,10 +158,8 @@ namespace NOnion.Tests
 
         public async Task EstablishAndCommunicateOverHSConnectionOnionStyle()
         {
-            int descriptorUploadRetryLimit = 2;
-
-            TorDirectory directory = await TorDirectory.BootstrapAsync(FallbackDirectorySelector.GetRandomFallbackDirectory(), new DirectoryInfo(Path.GetTempPath()));
-
+            using TorClient torClient = await TorClient.BootstrapWithGithubAsync(cachePath);
+            
             TorLogger.Log("Finished bootstraping");
 
             SecureRandom random = new SecureRandom();
@@ -158,7 +167,7 @@ namespace NOnion.Tests
             kpGen.Init(new Ed25519KeyGenerationParameters(random));
             Ed25519PrivateKeyParameters masterPrivateKey = (Ed25519PrivateKeyParameters)kpGen.GenerateKeyPair().Private;
 
-            TorServiceHost host = new TorServiceHost(directory, descriptorUploadRetryLimit, TestsRetryCount, FSharpOption<Ed25519PrivateKeyParameters>.Some(masterPrivateKey));
+            TorServiceHost host = new TorServiceHost(torClient, FSharpOption<Ed25519PrivateKeyParameters>.Some(masterPrivateKey));
             await host.StartAsync();
 
             TorLogger.Log("Finished starting HS host");
@@ -175,8 +184,8 @@ namespace NOnion.Tests
 
             var clientSide =
                 Task.Run(async () => {
-                    var client = await TorServiceClient.ConnectAsync(directory, host.ExportUrl());
-                    var stream = client.GetStream();
+                    var serviceClient = await TorServiceClient.ConnectAsync(torClient, host.ExportUrl());
+                    var stream = serviceClient.GetStream();
                     var lengthBytes = new byte[sizeof(int)];
                     await ReadExact(stream, lengthBytes, 0, lengthBytes.Length);
                     var length = BitConverter.ToInt32(lengthBytes);

@@ -53,3 +53,6 @@ type NOnionSocketException
             "Got socket exception during data transfer",
             innerException
         )
+
+type DestinationNodeCantBeReachedException() =
+    inherit NOnionException("Destination node can't be reached")
