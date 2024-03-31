@@ -1072,6 +1072,13 @@ and TorCircuit
             failwith
                 "Should not happen: can't get circuitId for non-initialized circuit."
 
+    member __.IsActive =
+        match circuitState with
+        | Ready _
+        | ReadyAsIntroductionPoint _
+        | ReadyAsRendezvousPoint _ -> true
+        | _ -> false
+
     member __.GetLastNode() =
         async {
             let! lastNodeResult =

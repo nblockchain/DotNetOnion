@@ -14,7 +14,7 @@ namespace NOnion.Tests
         {
             if (fallbackDirectories == null)
             {
-                var urlToTorServerList = "https://raw.githubusercontent.com/torproject/tor/main/src/app/config/fallback_dirs.inc";
+                var urlToTorServerList = "https://gitlab.torproject.org/tpo/core/tor/-/raw/main/src/app/config/fallback_dirs.inc";
                 using var webClient = new WebClient();
                 var fetchedInfo = webClient.DownloadString(urlToTorServerList);
 

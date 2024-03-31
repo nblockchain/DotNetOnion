@@ -59,21 +59,6 @@ jobs:
           dotnet fantomless --recurse .
           git diff --exit-code
 
-      - name: Install dependencies of commitlint
-        run: |
-          sudo apt update
-          sudo apt install --yes git npm
-      - name: Pull our commitlint configuration
-        run: |
-          git clone https://github.com/nblockchain/conventions.git
-          rm -rf ./conventions/.git/
-      - name: Validate current commit (last commit) with commitlint
-        if: github.event_name == 'push'
-        run: ./conventions/commitlint.sh --from HEAD~1 --to HEAD --verbose
-      - name: Validate PR commits with commitlint
-        if: github.event_name == 'pull_request'
-        run: ./conventions/commitlint.sh --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} --to ${{ github.event.pull_request.head.sha }} --verbose
-
   package:
     name: Package (Nuget)
     needs: sanity_check

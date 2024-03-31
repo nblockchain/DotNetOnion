@@ -19,6 +19,7 @@ open Org.BouncyCastle.Security
 open NOnion
 open NOnion.Cells.Relay
 open NOnion.Crypto
+open NOnion.Client
 open NOnion.Directory
 open NOnion.Utility
 open NOnion.Network
@@ -36,9 +37,7 @@ type IntroductionPointInfo =
 
 type TorServiceHost
     (
-        directory: TorDirectory,
-        maxDescriptorUploadRetryCount: int,
-        maxRendezvousConnectRetryCount: int,
+        client: TorClient,
         maybeMasterPrivateKey: Option<Ed25519PrivateKeyParameters>
     ) =
 
@@ -125,28 +124,19 @@ type TorServiceHost
             introEncPubKey
             =
             async {
-                let! endPoint, randomNodeDetails =
-                    directory.GetRouter RouterType.Guard
-
-                let! guard =
-                    TorGuard.NewClientWithIdentity
-                        endPoint
-                        (randomNodeDetails.GetIdentityKey() |> Some)
-
-                let rendezvousCircuit =
-                    TorCircuit(guard, self.IncomingServiceStreamCallback)
-
-                do! rendezvousCircuit.Create randomNodeDetails |> Async.Ignore
-
-                do!
-                    rendezvousCircuit.Extend(
-                        CircuitNodeDetail.Create(
-                            rendezvousEndpoint,
-                            onionKey,
-                            rendezvousFingerPrint
-                        )
+                let lastNodeDetails =
+                    CircuitNodeDetail.Create(
+                        rendezvousEndpoint,
+                        onionKey,
+                        rendezvousFingerPrint
                     )
-                    |> Async.Ignore
+
+                let! rendezvousCircuit =
+                    client.AsyncCreateCircuitWithCallback
+                        2
+                        CircuitPurpose.Unknown
+                        (Some lastNodeDetails)
+                        self.IncomingServiceStreamCallback
 
                 do!
                     rendezvousCircuit.Rendezvous
@@ -181,7 +171,7 @@ type TorServiceHost
                 introductionPointDetails.EncryptionKey.Private
                 :?> X25519PrivateKeyParameters
 
-            let! networkStatus = directory.GetLiveNetworkStatus()
+            let! networkStatus = client.Directory.GetLiveNetworkStatus()
             let periodInfo = networkStatus.GetTimePeriod()
 
             let decryptedData, macKey =
@@ -237,7 +227,7 @@ type TorServiceHost
                 | Some linkSpecifier -> linkSpecifier.Data
                 | None -> failwith "No rendezvous fingerprint found!"
 
-            let connectToRendezvousJob =
+            do!
                 tryConnectingToRendezvous
                     rendezvousEndpoint
                     rendezvousFingerPrint
@@ -247,11 +237,6 @@ type TorServiceHost
                     introAuthPubKey
                     introEncPrivKey
                     introEncPubKey
-
-            do!
-                FSharpUtil.Retry<SocketException, NOnionException>
-                    connectToRendezvousJob
-                    maxRendezvousConnectRetryCount
 
             return ()
         }
@@ -265,10 +250,10 @@ type TorServiceHost
                 async {
                     try
                         let! guardEndPoint, guardNodeDetail =
-                            directory.GetRouter RouterType.Guard
+                            client.Directory.GetRouter RouterType.Guard
 
                         let! _, introNodeDetail =
-                            directory.GetRouter RouterType.Normal
+                            client.Directory.GetRouter RouterType.Normal
 
                         match introNodeDetail with
                         | FastCreate ->
@@ -368,73 +353,52 @@ type TorServiceHost
     member self.UploadDescriptor
         (directoryToUploadTo: string)
         (document: HiddenServiceFirstLayerDescriptorDocument)
-        (retry: int)
         =
         async {
-            if retry > maxDescriptorUploadRetryCount then
+            try
+                let! hsDirectoryNode =
+                    client.Directory.GetCircuitNodeDetailByIdentity
+                        directoryToUploadTo
+
+                let! circuit =
+                    client.AsyncCreateCircuit
+                        2
+                        CircuitPurpose.Unknown
+                        (Some hsDirectoryNode)
+
+                use dirStream = new TorStream(circuit)
+                do! dirStream.ConnectToDirectory() |> Async.Ignore
+
+                let! _response =
+                    TorHttpClient(
+                        dirStream,
+                        Constants.DefaultHttpHost
+                    )
+                        .PostString
+                        (sprintf
+                            "/tor/hs/%i/publish"
+                            Constants.HiddenServices.Version)
+                        (document.ToString())
+
+                TorLogger.Log(
+                    sprintf
+                        "TorServiceHost: descriptor uploaded to node with identity %s"
+                        directoryToUploadTo
+                )
+
                 return ()
-            else
-                try
-                    let! hsDirectoryNode =
-                        directory.GetCircuitNodeDetailByIdentity
-                            directoryToUploadTo
+            with
+            | :? DestinationNodeCantBeReachedException
+            | :? UnsuccessfulHttpResponseException ->
+                // During testing, after migration to microdescriptor, we saw instances of
+                // 404 error msg when trying to publish our descriptors which mean for
+                // some reason we're trying to upload descriptor to a directory that
+                // is not a hidden service directory, there is no point in retrying here.
 
-                    let! guardEndPoint, randomGuardNode =
-                        directory.GetRouter RouterType.Guard
-
-                    let! _, randomMiddleNode =
-                        directory.GetRouter RouterType.Normal
-
-                    use! guardNode =
-                        TorGuard.NewClientWithIdentity
-                            guardEndPoint
-                            (randomGuardNode.GetIdentityKey() |> Some)
-
-                    let circuit = TorCircuit guardNode
-                    do! circuit.Create randomGuardNode |> Async.Ignore
-                    do! circuit.Extend randomMiddleNode |> Async.Ignore
-                    do! circuit.Extend hsDirectoryNode |> Async.Ignore
-
-                    use dirStream = new TorStream(circuit)
-                    do! dirStream.ConnectToDirectory() |> Async.Ignore
-
-                    let! _response =
-                        TorHttpClient(
-                            dirStream,
-                            Constants.DefaultHttpHost
-                        )
-                            .PostString
-                            (sprintf
-                                "/tor/hs/%i/publish"
-                                Constants.HiddenServices.Version)
-                            (document.ToString())
-
-                    TorLogger.Log(
-                        sprintf
-                            "TorServiceHost: descriptor uploaded to node with identity %s"
-                            directoryToUploadTo
-                    )
-
-                    return ()
-                with
-                | :? UnsuccessfulHttpResponseException ->
-                    // During testing, after migration to microdescriptor, we saw instances of
-                    // 404 error msg when trying to publish our descriptors which mean for
-                    // some reason we're trying to upload descriptor to a directory that
-                    // is not a hidden service directory, there is no point in retrying here.
-                    return ()
-                | ex ->
-                    TorLogger.Log(
-                        sprintf
-                            "TorServiceHost: hs descriptor upload failed, ex=%s"
-                            (ex.ToString())
-                    )
-
-                    return!
-                        self.UploadDescriptor
-                            directoryToUploadTo
-                            document
-                            (retry + 1)
+                // TorClient tries multiple times with different circuit to connect to
+                // the directory, if destination node can't be reached with any circuit
+                // we stop trying.
+                return ()
         }
 
     member self.BuildAndUploadDescriptor
@@ -450,7 +414,7 @@ type TorServiceHost
                     (masterPublicKey.GetEncoded())
 
             let! responsibleDirs =
-                directory.GetResponsibleHiddenServiceDirectories
+                client.Directory.GetResponsibleHiddenServiceDirectories
                     blindedPublicKey
                     srv
                     periodNum
@@ -698,7 +662,7 @@ type TorServiceHost
 
             let jobs =
                 responsibleDirs
-                |> Seq.map(fun dir -> self.UploadDescriptor dir outerWrapper 1)
+                |> Seq.map(fun dir -> self.UploadDescriptor dir outerWrapper)
 
             do!
                 Async.Parallel(
@@ -756,7 +720,7 @@ type TorServiceHost
     //TODO: this should refresh every 60-120min
     member self.KeepDescriptorsUpToDate() =
         async {
-            let! networkStatus = directory.GetLiveNetworkStatus()
+            let! networkStatus = client.Directory.GetLiveNetworkStatus()
 
             let firstDescriptorBuildJob =
                 self.UpdateFirstDescriptor networkStatus

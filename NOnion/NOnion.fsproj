@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="auth_dirs.inc" />
+    <EmbeddedResource Include="fallback_dirs.inc" />
     <Compile Include="TorLogger.fs" />
     <Compile Include="Constants.fs" />
     <Compile Include="DestroyReason.fs" />
@@ -85,8 +86,10 @@
     <Compile Include="Directory\HiddenServiceFirstLayerDescriptorDocument.fs" />
     <Compile Include="Directory\HiddenServiceSecondLayerDescriptorDocument.fs" />
     <Compile Include="Directory\TorDirectory.fs" />
+    <Compile Include="Client\TorClient.fs" />
     <Compile Include="Services\TorServiceHost.fs" />
     <Compile Include="Services\TorServiceClient.fs" />
+    <Compile Include="Proxy\TorProxy.fs" />
   </ItemGroup>
 
   <ItemGroup>

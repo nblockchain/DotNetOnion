@@ -110,20 +110,26 @@ module HiddenServicesUtility =
         //Add a fake protocol
         let parsedUrl = Uri(sprintf "http://%s" url)
 
-        //Remove .onion suffix and decode
-        let keyBytesOpt =
-            parsedUrl.DnsSafeHost.Split '.'
-            |> Seq.tryHead
-            |> Option.map Base32Util.DecodeBase32
+        let urlParts = parsedUrl.DnsSafeHost.Split '.'
 
-        // PublicKey (32 bytes) + Checksum (2 bytes) + Version (1 byte)
-        let expectedOnionUrlLength =
-            Constants.HiddenServices.OnionUrl.PublicKeyLength
-            + Constants.HiddenServices.OnionUrl.ChecksumLength
-            + 1
+        if urlParts.Length < 2 then
+            failwith "Invalid onion service url"
+        else
+            //Remove subdomains and .onion suffix and decode
+            let keyBytesOpt =
+                urlParts
+                |> Seq.tryItem(urlParts.Length - 2)
+                |> Option.map Base32Util.DecodeBase32
 
-        match keyBytesOpt with
-        | Some keyBytes when keyBytes.Length = expectedOnionUrlLength ->
-            keyBytes.[0 .. Constants.HiddenServices.OnionUrl.PublicKeyLength - 1],
-            parsedUrl.Port
-        | _ -> failwith "Invalid onion service url"
+            // PublicKey (32 bytes) + Checksum (2 bytes) + Version (1 byte)
+            let expectedOnionUrlLength =
+                Constants.HiddenServices.OnionUrl.PublicKeyLength
+                + Constants.HiddenServices.OnionUrl.ChecksumLength
+                + 1
+
+            match keyBytesOpt with
+            | Some keyBytes when keyBytes.Length = expectedOnionUrlLength ->
+                keyBytes.[0 .. Constants.HiddenServices.OnionUrl.PublicKeyLength
+                               - 1],
+                parsedUrl.Port
+            | _ -> failwith "Unable to decode onion service url"
