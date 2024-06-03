@@ -215,6 +215,18 @@ type TorGuard
     member self.SendAsync (circuidId: uint16) (cellToSend: ICell) =
         self.Send circuidId cellToSend |> Async.StartAsTask
 
+    member private self.HandleIncomingCellException<'T when 'T :> NOnionException>
+        (cell: ICell)
+        (ex: 'T)
+        =
+        sprintf
+            "TorGuard: exception when trying to handle incoming cell type=%i, ex=%s"
+            cell.Command
+            (ex.ToString())
+        |> TorLogger.Log
+
+        self.KillChildCircuits()
+
     member private __.ReceiveInternal() =
         async {
             (*
@@ -354,14 +366,15 @@ type TorGuard
                             try
                                 do! circuit.HandleIncomingCell cell
                             with
-                            | ex ->
-                                sprintf
-                                    "TorGuard: exception when trying to handle incoming cell type=%i, ex=%s"
-                                    cell.Command
-                                    (ex.ToString())
-                                |> TorLogger.Log
-
-                                self.KillChildCircuits()
+                            | :? HandshakeFailedException as ex ->
+                                self.HandleIncomingCellException<HandshakeFailedException>
+                                    cell
+                                    ex
+                            | :? CircuitDecryptionFailedException as ex ->
+                                self.HandleIncomingCellException<CircuitDecryptionFailedException>
+                                    cell
+                                    ex
+                            | ex -> return raise <| FSharpUtil.ReRaise ex
                         | None ->
                             self.KillChildCircuits()
                             failwithf "Unknown circuit, Id = %i" cid

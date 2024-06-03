@@ -36,6 +36,6 @@ type FastHandshake =
                 |> Kdf.ComputeLegacyKdf
 
             if kdfResult.KeyHandshake <> serverSideData.DerivativeKey then
-                failwith "Key handshake failed!"
+                raise <| HandshakeFailedException()
             else
                 kdfResult

@@ -107,6 +107,6 @@ type NTorHandshake =
             let auth = calculateHmacSha256 authInput Constants.NTorTMac
 
             if auth <> serverSideData.DerivativeKey then
-                failwith "Key handshake failed!"
+                raise <| HandshakeFailedException()
             else
                 Kdf.ComputeRfc5869Kdf secretInput
