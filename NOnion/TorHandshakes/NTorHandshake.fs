@@ -15,14 +15,14 @@ type NTorHandshake =
         {
             RandomClientPrivateKey: X25519PrivateKeyParameters
             RandomClientPublicKey: X25519PublicKeyParameters
-            IdentityDigest: array<byte>
+            IdentityDigest: Fingerprint
             NTorOnionKey: X25519PublicKeyParameters
         }
 
 
     static member Create
-        (identityDigest: array<byte>)
-        (nTorOnionKey: array<byte>)
+        (identityDigest: Fingerprint)
+        (nTorOnionKey: NTorOnionKey)
         =
 
         let privateKey, publicKey =
@@ -37,7 +37,8 @@ type NTorHandshake =
 
         {
             IdentityDigest = identityDigest
-            NTorOnionKey = X25519PublicKeyParameters(nTorOnionKey, 0)
+            NTorOnionKey =
+                X25519PublicKeyParameters(nTorOnionKey.ToByteArray(), 0)
             RandomClientPrivateKey = privateKey
             RandomClientPublicKey = publicKey
         }
@@ -46,7 +47,7 @@ type NTorHandshake =
         member self.GenerateClientMaterial() =
             Array.concat
                 [
-                    self.IdentityDigest
+                    self.IdentityDigest.ToByteArray()
                     self.NTorOnionKey.GetEncoded()
                     self.RandomClientPublicKey.GetEncoded()
                 ]
@@ -79,7 +80,7 @@ type NTorHandshake =
                     [
                         sharedSecretWithY
                         sharedSecretWithB
-                        self.IdentityDigest
+                        self.IdentityDigest.ToByteArray()
                         self.NTorOnionKey.GetEncoded()
                         self.RandomClientPublicKey.GetEncoded()
                         randomServerPublicKey.GetEncoded()
@@ -97,7 +98,7 @@ type NTorHandshake =
                 Array.concat
                     [
                         verify
-                        self.IdentityDigest
+                        self.IdentityDigest.ToByteArray()
                         self.NTorOnionKey.GetEncoded()
                         randomServerPublicKey.GetEncoded()
                         self.RandomClientPublicKey.GetEncoded()

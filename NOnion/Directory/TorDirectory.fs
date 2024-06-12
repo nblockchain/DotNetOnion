@@ -276,8 +276,8 @@ type TorDirectory =
                     endpoint,
                     CircuitNodeDetail.Create(
                         endpoint,
-                        nTorOnionKeyBytes,
-                        fingerprintBytes
+                        NTorOnionKey nTorOnionKeyBytes,
+                        Fingerprint fingerprintBytes
                     )
         }
 
@@ -583,7 +583,7 @@ type TorDirectory =
         |> Async.StartAsTask
 
     member self.GetResponsibleHiddenServiceDirectories
-        (blindedPublicKey: array<byte>)
+        (ED25519PublicKey blindedPublicKey)
         (sharedRandomValue: string)
         (periodNumber: uint64)
         (periodLength: uint64)
@@ -654,7 +654,7 @@ type TorDirectory =
                         Array.concat
                             [
                                 "store-at-idx" |> Encoding.ASCII.GetBytes
-                                blindedPublicKey
+                                blindedPublicKey.GetEncoded()
                                 replicaNum
                                 |> uint64
                                 |> IntegerSerialization.FromUInt64ToBigEndianByteArray

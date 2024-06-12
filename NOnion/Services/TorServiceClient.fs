@@ -110,8 +110,9 @@ type TorServiceClient =
                                                 (sprintf
                                                     "/tor/hs/%i/%s"
                                                     Constants.HiddenServices.Version
-                                                    ((Convert.ToBase64String
-                                                        blindedPublicKey)))
+                                                    (Convert.ToBase64String
+                                                     <| blindedPublicKey.ToByteArray
+                                                         ()))
                                                 false
 
                                         return
@@ -188,7 +189,7 @@ type TorServiceClient =
                     let secretInput =
                         Array.concat
                             [
-                                blindedPublicKey
+                                blindedPublicKey.ToByteArray()
                                 HiddenServicesCipher.GetSubCredential
                                     (periodNum, periodLength)
                                     publicKey
@@ -372,7 +373,7 @@ type TorServiceClient =
                                     CircuitNodeDetail.Create(
                                         endpointSpecifier,
                                         introductionPoint.OnionKey.Value,
-                                        identityKey
+                                        Fingerprint identityKey
                                     )
 
                         return
@@ -433,7 +434,7 @@ type TorServiceClient =
                                 {
                                     LinkSpecifier.Type =
                                         LinkSpecifierType.LegacyIdentity
-                                    Data = identityKey
+                                    Data = identityKey.ToByteArray()
                                 }
                             ]
                     }

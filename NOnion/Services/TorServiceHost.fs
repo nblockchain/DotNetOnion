@@ -29,9 +29,9 @@ type IntroductionPointInfo =
         Address: IPEndPoint
         EncryptionKey: AsymmetricCipherKeyPair
         AuthKey: AsymmetricCipherKeyPair
-        MasterPublicKey: array<byte>
-        OnionKey: array<byte>
-        Fingerprint: array<byte>
+        MasterPublicKey: Ed25519PublicKeyParameters
+        NTorOnionKey: NTorOnionKey
+        Fingerprint: Fingerprint
     }
 
 type TorServiceHost
@@ -195,7 +195,7 @@ type TorServiceHost
                     (introductionPointDetails.EncryptionKey.Public
                     :?> X25519PublicKeyParameters)
                     periodInfo
-                    introductionPointDetails.MasterPublicKey
+                    (introductionPointDetails.MasterPublicKey.GetEncoded())
 
             use decryptedStream = new MemoryStream(decryptedData)
             use decryptedReader = new BinaryReader(decryptedStream)
@@ -234,7 +234,7 @@ type TorServiceHost
                     |> Seq.tryExactlyOne
 
                 match linkSpecifierOpt with
-                | Some linkSpecifier -> linkSpecifier.Data
+                | Some linkSpecifier -> Fingerprint linkSpecifier.Data
                 | None -> failwith "No rendezvous fingerprint found!"
 
             let connectToRendezvousJob =
@@ -305,10 +305,9 @@ type TorServiceHost
                                     IntroductionPointInfo.Address = address
                                     AuthKey = authKeyPair
                                     EncryptionKey = encKeyPair
-                                    OnionKey = onionKey
+                                    NTorOnionKey = onionKey
                                     Fingerprint = fingerprint
-                                    MasterPublicKey =
-                                        masterPublicKey.GetEncoded()
+                                    MasterPublicKey = masterPublicKey
                                 }
 
                             do! circuit.Create guardNodeDetail |> Async.Ignore
@@ -483,7 +482,7 @@ type TorServiceHost
             let secretInput =
                 Array.concat
                     [
-                        blindedPublicKey
+                        blindedPublicKey.ToByteArray()
                         HiddenServicesCipher.GetSubCredential
                             (periodNum, periodLength)
                             (masterPublicKey.GetEncoded())
@@ -507,7 +506,9 @@ type TorServiceHost
                                             {
                                                 LinkSpecifier.Type =
                                                     LinkSpecifierType.LegacyIdentity
-                                                Data = info.Fingerprint
+                                                Data =
+                                                    info.Fingerprint.ToByteArray
+                                                        ()
                                             }
                                         ]
 
@@ -529,9 +530,10 @@ type TorServiceHost
                                         ((info.AuthKey.Public
                                         :?> Ed25519PublicKeyParameters)
                                             .GetEncoded())
-                                        (descriptorSigningPublicKey.GetEncoded())
-                                        (descriptorSigningPrivateKey.GetEncoded
-                                            ())
+                                        (descriptorSigningPublicKey
+                                         |> ED25519PublicKey)
+                                        (descriptorSigningPrivateKey
+                                         |> Ed25519PrivateKey.Normal)
                                         Constants.HiddenServices.Descriptor.CertificateLifetime
 
                                 let encKeyBytes =
@@ -556,14 +558,15 @@ type TorServiceHost
                                     Certificate.CreateNew
                                         CertType.IntroPointEncKeySignedByDescriptorSigningKey
                                         convertedX25519Key
-                                        (descriptorSigningPublicKey.GetEncoded())
-                                        (descriptorSigningPrivateKey.GetEncoded
-                                            ())
+                                        (descriptorSigningPublicKey
+                                         |> ED25519PublicKey)
+                                        (descriptorSigningPrivateKey
+                                         |> Ed25519PrivateKey.Normal)
                                         Constants.HiddenServices.Descriptor.CertificateLifetime
 
                                 {
                                     IntroductionPointEntry.OnionKey =
-                                        Some info.OnionKey
+                                        Some info.NTorOnionKey
                                     AuthKey = Some authKeyCert
                                     EncKey = Some encKeyBytes
                                     EncKeyCert = Some encKeyCert
@@ -685,7 +688,7 @@ type TorServiceHost
                         CertType.ShortTermDescriptorSigningKeyByBlindedPublicKey
                         (descriptorSigningPublicKey.GetEncoded())
                         blindedPublicKey
-                        blindedPrivateKey
+                        (Ed25519PrivateKey.Expanded blindedPrivateKey)
                         Constants.HiddenServices.Descriptor.CertificateLifetime
 
                 HiddenServiceFirstLayerDescriptorDocument.CreateNew

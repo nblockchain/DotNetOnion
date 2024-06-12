@@ -25,8 +25,8 @@ type CircuitNodeDetail =
     | FastCreate
     | Create of
         EndPoint: IPEndPoint *
-        NTorOnionKey: array<byte> *
-        IdentityKey: array<byte>
+        NTorOnionKey: NTorOnionKey *
+        Fingerprint: Fingerprint
 
     member self.GetIdentityKey() =
         match self with
@@ -694,7 +694,7 @@ and TorCircuit
                                         {
                                             LinkSpecifier.Type =
                                                 LinkSpecifierType.LegacyIdentity
-                                            Data = identityKey
+                                            Data = identityKey.ToByteArray()
                                         }
                                     ]
                                 HandshakeType = HandshakeType.NTor

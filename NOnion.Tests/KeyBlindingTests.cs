@@ -17,7 +17,7 @@ namespace NOnion.Tests
         [Test]
         public void CheckBlindedPublicKey()
         {
-            var computed = HiddenServicesCipher.CalculateBlindedPublicKey(blindingFactor, publicKey);
+            var computed = HiddenServicesCipher.CalculateBlindedPublicKey(blindingFactor, publicKey).ToByteArray();
             CollectionAssert.AreEqual(computed, blindedPublicKey);
         }
     }

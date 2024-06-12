@@ -10,7 +10,7 @@ type RelayIntroduceInnerData =
     {
         RendezvousCookie: array<byte>
         Extensions: List<RelayIntroExtension>
-        OnionKey: array<byte>
+        OnionKey: NTorOnionKey
         RendezvousLinkSpecifiers: List<LinkSpecifier>
     }
 
@@ -41,7 +41,8 @@ type RelayIntroduceInnerData =
         if onionKeyLength <> Constants.NTorPublicKeyLength then
             failwith "Invalid onion key length"
 
-        let onionKey = reader.ReadBytes Constants.NTorPublicKeyLength
+        let onionKey =
+            reader.ReadBytes Constants.NTorPublicKeyLength |> NTorOnionKey
 
         let rec readLinkSpecifier (n: byte) (state: List<LinkSpecifier>) =
             if n = 0uy then
@@ -62,6 +63,8 @@ type RelayIntroduceInnerData =
         }
 
     member self.ToBytes() =
+        let onionKeyBytes = self.OnionKey.ToByteArray()
+
         Array.concat
             [
                 self.RendezvousCookie
@@ -70,10 +73,10 @@ type RelayIntroduceInnerData =
                 |> List.map(fun ext -> ext.ToBytes())
                 |> Array.concat
                 Array.singleton 1uy
-                self.OnionKey.Length
+                onionKeyBytes.Length
                 |> uint16
                 |> IntegerSerialization.FromUInt16ToBigEndianByteArray
-                self.OnionKey
+                onionKeyBytes
                 self.RendezvousLinkSpecifiers.Length |> byte |> Array.singleton
                 self.RendezvousLinkSpecifiers
                 |> List.map(fun link -> link.ToBytes())

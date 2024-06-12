@@ -70,8 +70,8 @@ type Certificate =
     static member CreateNew
         certType
         (certifiedKey: array<byte>)
-        (signingPublicKey: array<byte>)
-        (signingPrivateKey: array<byte>)
+        (ED25519PublicKey signingPublicKey)
+        (signingPrivateKey: Ed25519PrivateKey)
         (lifetime: TimeSpan)
         =
         let unsignedCertificate =
@@ -92,7 +92,7 @@ type Certificate =
                             CertificateExtension.Type =
                                 CertificateExtensionType.SignedWithEd25519Key
                             Flags = 0uy
-                            Data = signingPublicKey
+                            Data = signingPublicKey.GetEncoded()
                         }
                     )
                 Signature = Array.empty
@@ -101,13 +101,14 @@ type Certificate =
         let unsignedCertificateBytes = unsignedCertificate.ToBytes true
 
         let signature =
-            if signingPrivateKey.Length = 32 then
+            match signingPrivateKey with
+            | Ed25519PrivateKey.Normal privateKey ->
                 //Standard private key, we can sign with bouncycastle
                 let signer = Ed25519Signer()
 
                 signer.Init(
                     true,
-                    Ed25519PrivateKeyParameters(signingPrivateKey, 0)
+                    Ed25519PrivateKeyParameters(privateKey.GetEncoded(), 0)
                 )
 
                 signer.BlockUpdate(
@@ -117,21 +118,18 @@ type Certificate =
                 )
 
                 signer.GenerateSignature()
-            elif signingPrivateKey.Length = 64 then
+            | Ed25519PrivateKey.Expanded privateKey ->
                 //Expanded private key, we have to sign with Chaos.NaCl
                 let signature = Array.zeroCreate<byte> 64
 
                 Ed25519.SignWithPrehashedPrivateKey(
                     ArraySegment signature,
                     ArraySegment unsignedCertificateBytes,
-                    ArraySegment signingPrivateKey,
-                    ArraySegment signingPublicKey
+                    ArraySegment(privateKey.ToByteArray()),
+                    ArraySegment(signingPublicKey.GetEncoded())
                 )
 
                 signature
-            else
-                failwith
-                    "Invalid private key, private key should either be 32 (standard ed25519) or 64 bytes (expanded ed25519 key)"
 
         { unsignedCertificate with
             Signature = signature

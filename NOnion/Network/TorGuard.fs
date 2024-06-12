@@ -49,7 +49,7 @@ type TorGuard
     (
         client: TcpClient,
         sslStream: SslStream,
-        fingerprintOpt: Option<array<byte>>
+        fingerprintOpt: Option<Fingerprint>
     ) =
     let shutdownToken = new CancellationTokenSource()
 
@@ -116,7 +116,7 @@ type TorGuard
 
     static member private InnerNewClient
         (ipEndpoint: IPEndPoint)
-        (fingerprintOpt: Option<array<byte>>)
+        (fingerprintOpt: Option<Fingerprint>)
         =
         async {
             let tcpClient = new TcpClient()
@@ -475,7 +475,7 @@ type TorGuard
             let sha1 = SHA1.Create()
             let hash = sha1.ComputeHash(getPublicKeyBytes idCertificate)
 
-            if hash <> fingerprint then
+            if hash <> fingerprint.ToByteArray() then
                 raise
                 <| GuardConnectionFailedException("RSA Identity was invalid")
         | None -> ()

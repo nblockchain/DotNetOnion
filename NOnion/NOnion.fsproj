@@ -19,6 +19,7 @@
     <Compile Include="RelayIntroduceStatus.fs" />
     <Compile Include="Exceptions.fs" />
     <Compile Include="HandshakeType.fs" />
+    <Compile Include="KeyTypes.fs" />
     <Compile Include="Utility\EmbeddedResourceUtility.fs" />
     <Compile Include="Utility\PemUtility.fs" />
     <Compile Include="Utility\FSharpUtil.fs" />
