@@ -2,9 +2,12 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 using NUnit.Framework;
@@ -145,7 +148,7 @@ namespace NOnion.Tests
             Assert.DoesNotThrowAsync(BrowseFacebookOverHSWithTLS);
         }
 
-        public async Task EstablishAndCommunicateOverHSConnectionOnionStyle()
+        private async Task<(TorDirectory, TorServiceHost)> BootstrapDirectoryAndStartHost()
         {
             int descriptorUploadRetryLimit = 2;
 
@@ -162,6 +165,13 @@ namespace NOnion.Tests
             await host.StartAsync();
 
             TorLogger.Log("Finished starting HS host");
+
+            return (directory, host);
+        }
+
+        public async Task EstablishAndCommunicateOverHSConnectionOnionStyle()
+        {
+            (var directory, var host) = await BootstrapDirectoryAndStartHost();
 
             var dataToSendAndReceive = new byte[] { 1, 2, 3, 4 };
 
@@ -197,6 +207,68 @@ namespace NOnion.Tests
         {
             Assert.DoesNotThrowAsync(EstablishAndCommunicateOverHSConnectionOnionStyle);
         }
+
+#if NET6_0_OR_GREATER
+        [Test]
+        [Retry(TestsRetryCount)]
+        public void CanConnectToHiddenServiceUsingTorClient()
+        {
+            Assert.DoesNotThrowAsync(ConnectToHiddenServiceUsingTorClient);
+        }
+
+        private async Task ConnectToHiddenServiceUsingTorClient()
+        {
+            (_, var host) = await BootstrapDirectoryAndStartHost();
+
+            var stringToSendAndReceive =
+                "We are using tor!";
+
+            var serverSide =
+                Task.Run(async () => {
+                    var stream = await host.AcceptClientAsync();
+
+                    var httpResponse =
+                        "HTTP/1.1 200 OK\r\n" +
+                        "Server: NOnion\r\n" +
+                        $"Content-Length: {stringToSendAndReceive.Length}\r\n" +
+                        "Connection: close\r\n" +
+                        "Content-Type: text/plain" +
+                        "\r\n" +
+                        "\r\n" +
+                        stringToSendAndReceive +
+                        "\r\n";
+                    var httpResponseBytes =
+                        Encoding.ASCII.GetBytes(httpResponse);
+
+                    await stream.WriteAsync(httpResponseBytes, 0, httpResponseBytes.Length);
+                    await stream.EndAsync();
+                });
+
+            var clientSide =
+                Task.Run(async () => {
+                    var handler = new HttpClientHandler
+                    {
+                        Proxy = new WebProxy(new Uri("socks5://localhost:9050"))
+                    };
+
+                    TestContext.Progress.WriteLine("Trying to connect to hidden service...");
+                    using (handler)
+                    using (var httpClient = new HttpClient(handler))
+                    {
+                        // Sometimes tor client takes a while to bootstrap and stalls
+                        // the request.
+                        httpClient.Timeout = TimeSpan.FromMinutes(20);
+                        var result = await httpClient.GetStringAsync("http://" + host.ExportUrl());
+                        Assert.AreEqual(result, stringToSendAndReceive);
+                    }
+                }
+            );
+
+            await TaskUtils.WhenAllFailFast(serverSide, clientSide);
+
+            ((IDisposable)host).Dispose();
+        }
+#endif
     }
 }
 

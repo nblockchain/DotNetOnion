@@ -6,20 +6,36 @@ jobs:
   build_and_test:
     name: Build & Test
     runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dotnet_version: "3.1.x"
+            flag: ""
+          - dotnet_version: "7.0.x"
+            flag: "-p:NET7=true"
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
-      - name: Setup .NET Core SDK 3.1.x
+      - name: Setup .NET SDK ${{ matrix.dotnet_version }}
         uses: actions/setup-dotnet@v1.7.2
         with:
-          dotnet-version: '3.1.x'
+          dotnet-version: ${{ matrix.dotnet_version }}
       - name: Install dependencies
-        run: dotnet restore
+        run: dotnet restore ${{ matrix.flag }}
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --configuration Release --no-restore ${{ matrix.flag }}
+      # Please keep in mind that NOnion DOES NOT require tor client to function
+      # tor client is only installed here for testing purposes.
+      - name: Install Tor and wait for startup
+        run: |
+          sudo apt install tor
+          echo -e "SOCKSPort 127.0.0.1:9050" | sudo tee -a /etc/tor/torrc
+          sudo systemctl restart tor
+          sleep 2m
       - name: Test
-        run: dotnet test --no-restore --verbosity normal
+        run: dotnet test --no-restore --verbosity normal ${{ matrix.flag }}
 
   sanity_check:
     name: Sanity Check
